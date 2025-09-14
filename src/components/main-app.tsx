@@ -33,5 +33,5 @@ export default function MainApp() {
     return <WelcomeScreen onStart={() => setStarted(true)} />;
   }
   
-  return <Dashboard />;
+  return <Dashboard onBackToWelcome={() => setStarted(false)} />;
 }

@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 type UserInfoStepProps = {
   onNext: () => void;
   onClear: () => void;
+  onBackToWelcome: () => void;
 };
 
-export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
+export default function UserInfoStep({ onNext, onClear, onBackToWelcome }: UserInfoStepProps) {
   const { control, watch } = useFormContext();
   const userAge = watch('userAge');
 
@@ -77,6 +78,7 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
           />
       </CardContent>
       <CardFooter className="flex flex-col gap-4 max-w-sm mx-auto">
+        <Button type="button" onClick={onBackToWelcome} variant="outline" className="w-full rounded-full">ย้อนกลับ</Button>
         <Button type="button" onClick={onNext} className="w-full bg-teal-500 hover:bg-teal-600 rounded-full">ยืนยัน</Button>
         <Button type="button" onClick={onClear} variant="outline" className="w-full rounded-full">ล้างข้อมูล</Button>
       </CardFooter>
