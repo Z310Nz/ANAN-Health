@@ -20,13 +20,14 @@ import { Button } from './ui/button';
 const SESSION_STORAGE_KEY = 'anan-health-calculator-session';
 
 const FormSchema = z.object({
-  userAge: z.coerce.number().min(18, "Age must be at least 18").max(100, "Age must be 100 or less"),
+  userAge: z.coerce.number().min(18, "ต้องมีอายุอย่างน้อย 18 ปี").max(100, "อายุต้องไม่เกิน 100 ปี"),
+  gender: z.enum(['male', 'female'], { required_error: "กรุณาเลือกเพศ" }),
   coverageAmount: z.coerce.number().min(10000, "Must be at least 10,000").max(10000000, "Cannot exceed 10,000,000"),
   coveragePeriod: z.coerce.number().min(1, "Must be at least 1 year").max(50, "Cannot exceed 50 years"),
   riders: z.array(z.string()).optional(),
 });
 
-const steps = ["User Info", "Coverage Details", "Summary"];
+const steps = ["ข้อมูลส่วนตัว", "รายละเอียดความคุ้มครอง", "สรุป"];
 
 export default function PremiumCalculator() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -38,6 +39,7 @@ export default function PremiumCalculator() {
     resolver: zodResolver(FormSchema),
     defaultValues: {
       userAge: 30,
+      gender: undefined,
       coverageAmount: 500000,
       coveragePeriod: 20,
       riders: ["critical_illness"],
@@ -76,7 +78,7 @@ export default function PremiumCalculator() {
 
 
   const handleNext = async () => {
-    const fields: (keyof PremiumFormData)[] = [['userAge'], ['coverageAmount', 'coveragePeriod', 'riders']][currentStep] as any;
+    const fields: (keyof PremiumFormData)[] = [['userAge', 'gender'], ['coverageAmount', 'coveragePeriod', 'riders']][currentStep] as any;
     const isValid = await methods.trigger(fields);
     if (isValid) {
       setCurrentStep((prev) => prev + 1);
@@ -110,6 +112,15 @@ export default function PremiumCalculator() {
     setCurrentStep(0);
     sessionStorage.removeItem(SESSION_STORAGE_KEY);
   };
+  
+  const handleClear = () => {
+    methods.reset({
+      ...methods.getValues(),
+      userAge: 30,
+      gender: undefined,
+    });
+  }
+
 
   const handleExport = () => {
     if (calculation) {
@@ -128,7 +139,7 @@ export default function PremiumCalculator() {
         <FormProvider {...methods}>
           <form onSubmit={methods.handleSubmit(handleCalculate)}>
             <div className="animate-fade-in">
-              {currentStep === 0 && <UserInfoStep onNext={handleNext} />}
+              {currentStep === 0 && <UserInfoStep onNext={handleNext} onClear={handleClear} />}
               {currentStep === 1 && <CoverageStep onBack={handleBack} isLoading={isLoading} />}
               {currentStep === 2 && calculation && (
                 <SummaryStep

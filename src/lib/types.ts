@@ -6,6 +6,7 @@ export type User = {
 
 export type PremiumFormData = {
   userAge: number;
+  gender: 'male' | 'female';
   coverageAmount: number;
   coveragePeriod: number;
   riders: string[];

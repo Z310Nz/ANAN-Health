@@ -7,7 +7,12 @@ import type { PremiumFormData, PremiumCalculation, YearlyPremium } from "@/lib/t
 function generateMockBreakdown(formData: PremiumFormData): { yearlyBreakdown: YearlyPremium[], chartData: PremiumCalculation['chartData'] } {
   const yearlyBreakdown: YearlyPremium[] = [];
   const chartData: PremiumCalculation['chartData'] = [];
-  const baseYearlyPremium = formData.coverageAmount * (0.001 + (formData.userAge - 18) * 0.0001);
+  let baseYearlyPremium = formData.coverageAmount * (0.001 + (formData.userAge - 18) * 0.0001);
+  
+  if (formData.gender === 'female') {
+    baseYearlyPremium *= 0.95; // 5% discount for females
+  }
+
   const ridersYearlyPremium = (formData.riders?.length || 0) * 150;
 
   for (let i = 1; i <= formData.coveragePeriod; i++) {
