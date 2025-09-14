@@ -1,12 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import LoginScreen from '@/components/login-screen';
+import WelcomeScreen from '@/components/welcome-screen';
 import Dashboard from '@/components/dashboard';
 import { Skeleton } from './ui/skeleton';
 
 export default function MainApp() {
   const { user, loading } = useAuth();
+  const [started, setStarted] = useState(false);
 
   if (loading) {
     return (
@@ -22,5 +25,13 @@ export default function MainApp() {
     );
   }
 
-  return user ? <Dashboard /> : <LoginScreen />;
+  if (!user) {
+    return <LoginScreen />;
+  }
+
+  if (!started) {
+    return <WelcomeScreen onStart={() => setStarted(true)} />;
+  }
+  
+  return <Dashboard />;
 }
