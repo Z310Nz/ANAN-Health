@@ -41,5 +41,6 @@ export type PremiumCalculation = {
     year: string;
     Base: number;
     Riders: number;
+    Total: number;
   }[];
 };

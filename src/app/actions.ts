@@ -29,13 +29,13 @@ function generateMockBreakdown(formData: PremiumFormData): { yearlyBreakdown: Ye
     const currentAge = formData.userAge + i - 1;
     // Increase base premium slightly with age
     const base = baseYearlyPremium * (1 + (currentAge - formData.userAge) * 0.02);
-    const riders = ridersYearlyPremium * (1 + (currentAge - formData.userAge) * 0.01);
-    const total = base + riders;
+    const ridersCost = ridersYearlyPremium * (1 + (currentAge - formData.userAge) * 0.01);
+    const total = base + ridersCost;
     
     yearlyBreakdown.push({
       year: i,
       base: Math.round(base),
-      riders: Math.round(riders),
+      riders: Math.round(ridersCost),
       total: Math.round(total),
     });
     
@@ -43,7 +43,8 @@ function generateMockBreakdown(formData: PremiumFormData): { yearlyBreakdown: Ye
        chartData.push({
         year: `Year ${i}`,
         Base: Math.round(base),
-        Riders: Math.round(riders),
+        Riders: Math.round(ridersCost),
+        Total: Math.round(total)
       });
     }
   }

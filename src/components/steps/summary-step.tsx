@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { FileDown, RefreshCw, Info } from 'lucide-react';
 
 type SummaryStepProps = {
@@ -60,7 +60,7 @@ export default function SummaryStep({ calculation, onStartOver, onExport }: Summ
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[250px] w-full">
             <ResponsiveContainer>
-              <BarChart data={calculation.chartData} accessibilityLayer>
+              <LineChart data={calculation.chartData} accessibilityLayer>
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="year"
@@ -79,9 +79,9 @@ export default function SummaryStep({ calculation, onStartOver, onExport }: Summ
                   />}
                 />
                 <Legend />
-                <Bar dataKey="Base" stackId="a" fill="var(--color-Base)" radius={[0, 0, 4, 4]} />
-                <Bar dataKey="Riders" stackId="a" fill="var(--color-Riders)" radius={[4, 4, 0, 0]} />
-              </BarChart>
+                <Line type="monotone" dataKey="Base" stroke="var(--color-Base)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="Riders" stroke="var(--color-Riders)" strokeWidth={2} dot={false}/>
+              </LineChart>
             </ResponsiveContainer>
           </ChartContainer>
         </CardContent>
