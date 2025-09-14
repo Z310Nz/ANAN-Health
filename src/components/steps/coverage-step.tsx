@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { X } from 'lucide-react';
 
 type CoverageStepProps = {
   onBack: () => void;
@@ -26,7 +27,7 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
       </CardHeader>
       <CardContent className="space-y-4 max-w-lg mx-auto">
         {fields.map((item, index) => (
-          <div key={item.id} className="grid grid-cols-2 gap-4">
+          <div key={item.id} className="grid grid-cols-[1fr_1fr_auto] items-center gap-4">
             <FormField
               control={control}
               name={`policies.${index}.policy`}
@@ -60,10 +61,21 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                 </FormItem>
               )}
             />
+             {fields.length > 1 && (
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => remove(index)}
+                    className="text-red-500 hover:text-red-700"
+                >
+                    <X className="h-4 w-4" />
+                </Button>
+            )}
           </div>
         ))}
          {fields.length < 4 && (
-            <Button type="button" variant="link" onClick={() => append({ policy: '', amount: '' })}>
+            <Button type="button" variant="link" onClick={() => append({ policy: '', amount: undefined })}>
                 + เพิ่มกรมธรรม์
             </Button>
          )}
