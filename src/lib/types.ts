@@ -9,15 +9,21 @@ export type Policy = {
   amount?: number;
 }
 
+export type Rider = {
+    name: string;
+    selected?: boolean;
+    amount?: number;
+}
+
 export type PremiumFormData = {
   userAge: number;
   gender: 'male' | 'female';
   coveragePeriod: number;
   policies?: Policy[];
+  riders?: Rider[];
   discount?: number;
   // The following are deprecated and will be removed
   coverageAmount: number;
-  riders: string[];
 };
 
 export type YearlyPremium = {

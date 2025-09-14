@@ -14,6 +14,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { StepperIndicator } from '@/components/stepper-indicator';
 import UserInfoStep from '@/components/steps/user-info-step';
 import CoverageStep from '@/components/steps/coverage-step';
+import RidersStep from '@/components/steps/riders-step';
 import SummaryStep from '@/components/steps/summary-step';
 
 const SESSION_STORAGE_KEY = 'anan-health-calculator-session';
@@ -23,15 +24,22 @@ const policySchema = z.object({
   amount: z.coerce.number().optional(),
 });
 
+const riderSchema = z.object({
+  name: z.string(),
+  selected: z.boolean().optional(),
+  amount: z.coerce.number().optional(),
+});
+
 const FormSchema = z.object({
   userAge: z.coerce.number().min(18, "ต้องมีอายุอย่างน้อย 18 ปี").max(100, "อายุต้องไม่เกิน 100 ปี"),
   gender: z.enum(['male', 'female'], { required_error: "กรุณาเลือกเพศ" }),
   coveragePeriod: z.coerce.number().min(1, "Must be at least 1 year").max(50, "Cannot exceed 50 years"),
   policies: z.array(policySchema).optional(),
+  riders: z.array(riderSchema).optional(),
   discount: z.coerce.number().optional(),
 });
 
-const steps = ["ข้อมูลส่วนตัว", "เลือกกรมธรรม์หลัก", "สรุป"];
+const steps = ["ข้อมูลส่วนตัว", "เลือกกรมธรรม์หลัก", "เลือกอนุสัญญา", "สรุป"];
 
 export default function PremiumCalculator() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -46,6 +54,13 @@ export default function PremiumCalculator() {
       gender: undefined,
       coveragePeriod: 20,
       policies: [{policy: undefined, amount: undefined}],
+      riders: [
+        { name: 'Package 1', selected: false, amount: undefined },
+        { name: 'Package 2', selected: false, amount: undefined },
+        { name: 'Package 3', selected: false, amount: undefined },
+        { name: 'Package 4', selected: false, amount: undefined },
+        { name: 'Package 5', selected: false, amount: undefined },
+      ],
       discount: undefined,
     },
   });
@@ -54,11 +69,13 @@ export default function PremiumCalculator() {
     try {
       const savedSession = sessionStorage.getItem(SESSION_STORAGE_KEY);
       if (savedSession) {
-        const { formData, result } = JSON.parse(savedSession);
+        const { formData, result, step } = JSON.parse(savedSession);
         methods.reset(formData);
         if (result) {
           setCalculation(result);
-          setCurrentStep(2);
+        }
+        if (step) {
+          setCurrentStep(step);
         }
       }
     } catch (e) {
@@ -72,20 +89,32 @@ export default function PremiumCalculator() {
     try {
         const session = {
             formData: watchedData,
-            result: calculation
+            result: calculation,
+            step: currentStep,
         };
         sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
     } catch (e) {
         console.error("Could not save session", e);
     }
-  }, [watchedData, calculation]);
+  }, [watchedData, calculation, currentStep]);
 
 
   const handleNext = async () => {
-    const fields: (keyof PremiumFormData)[] = ['userAge', 'gender', 'coveragePeriod'];
-    const isValid = await methods.trigger(fields);
+    let fieldsToValidate: (keyof PremiumFormData)[] = [];
+    if (currentStep === 0) {
+      fieldsToValidate = ['userAge', 'gender', 'coveragePeriod'];
+    } else if (currentStep === 1) {
+      fieldsToValidate = ['policies', 'discount'];
+    }
+    
+    const isValid = await methods.trigger(fieldsToValidate);
+
     if (isValid) {
-      setCurrentStep((prev) => prev + 1);
+      if (currentStep === 2) {
+        await methods.handleSubmit(handleCalculate)();
+      } else {
+        setCurrentStep((prev) => prev + 1);
+      }
     }
   };
 
@@ -94,14 +123,11 @@ export default function PremiumCalculator() {
   };
   
   const handleCalculate = async (data: PremiumFormData) => {
-    const isValid = await methods.trigger(['policies', 'discount']);
-    if (!isValid) return;
-      
     setIsLoading(true);
     try {
       const result = await getPremiumSummary(data);
       setCalculation(result);
-      setCurrentStep(2);
+      setCurrentStep(3);
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -137,6 +163,30 @@ export default function PremiumCalculator() {
       exportToCsv("premium_breakdown.csv", headers, data);
     }
   };
+  
+  const renderStep = () => {
+    switch (currentStep) {
+        case 0:
+            return <UserInfoStep onNext={handleNext} onClear={handleClear} />;
+        case 1:
+            return <CoverageStep onBack={handleBack} onNext={handleNext} isLoading={false} />;
+        case 2:
+            return <RidersStep onBack={handleBack} isLoading={isLoading} />;
+        case 3:
+            if (calculation) {
+                return (
+                    <SummaryStep
+                        calculation={calculation}
+                        onStartOver={handleStartOver}
+                        onExport={handleExport}
+                    />
+                );
+            }
+            return null; // Or some loading/error state
+        default:
+            return null;
+    }
+  }
 
   return (
     <Card className="w-full max-w-4xl shadow-lg border-none rounded-t-3xl mt-[-2.5rem] bg-white pt-8">
@@ -147,15 +197,7 @@ export default function PremiumCalculator() {
         <FormProvider {...methods}>
           <form onSubmit={methods.handleSubmit(handleCalculate)}>
             <div className="animate-fade-in">
-              {currentStep === 0 && <UserInfoStep onNext={handleNext} onClear={handleClear} />}
-              {currentStep === 1 && <CoverageStep onBack={handleBack} isLoading={isLoading} />}
-              {currentStep === 2 && calculation && (
-                <SummaryStep
-                  calculation={calculation}
-                  onStartOver={handleStartOver}
-                  onExport={handleExport}
-                />
-              )}
+              {renderStep()}
             </div>
           </form>
         </FormProvider>

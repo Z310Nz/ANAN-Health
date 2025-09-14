@@ -21,13 +21,15 @@ function generateMockBreakdown(formData: PremiumFormData): { yearlyBreakdown: Ye
     baseYearlyPremium *= (100 - formData.discount) / 100;
   }
 
-  const ridersYearlyPremium = (formData.riders?.length || 0) * 150;
+  const selectedRiders = formData.riders?.filter(r => r.selected) || [];
+  const ridersYearlyPremium = selectedRiders.reduce((sum, r) => sum + (r.amount || 0), 0);
+
 
   for (let i = 1; i <= formData.coveragePeriod; i++) {
     const currentAge = formData.userAge + i - 1;
     // Increase base premium slightly with age
     const base = baseYearlyPremium * (1 + (currentAge - formData.userAge) * 0.02);
-    const riders = ridersYearlyPremium;
+    const riders = ridersYearlyPremium * (1 + (currentAge - formData.userAge) * 0.01);
     const total = base + riders;
     
     yearlyBreakdown.push({
@@ -55,11 +57,13 @@ export async function getPremiumSummary(
   try {
     const totalPolicyAmount = formData.policies?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
     
+    const ridersList = formData.riders?.filter(r => r.selected).map(r => r.name) || [];
+
     const input: PremiumCalculationInput = {
       coverageAmount: totalPolicyAmount,
       coveragePeriod: formData.coveragePeriod,
       userAge: formData.userAge,
-      riders: formData.policies?.map(p => p.policy || '').filter(p => p) || [],
+      riders: ridersList,
     };
 
     const aiResult = await calculatePremiumSummary(input);

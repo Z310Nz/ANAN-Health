@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 
 type CoverageStepProps = {
   onBack: () => void;
+  onNext: () => void;
   isLoading: boolean;
 };
 
-export default function CoverageStep({ onBack, isLoading }: CoverageStepProps) {
+export default function CoverageStep({ onBack, onNext, isLoading }: CoverageStepProps) {
   const { control, formState: { errors } } = useFormContext();
   const { fields, append, remove } = useFieldArray({
     control,
@@ -90,7 +91,7 @@ export default function CoverageStep({ onBack, isLoading }: CoverageStepProps) {
         <Button type="button" variant="outline" onClick={onBack} disabled={isLoading} className="rounded-full px-10">
           ย้อนกลับ
         </Button>
-        <Button type="submit" disabled={isLoading} className="bg-teal-500 hover:bg-teal-600 rounded-full px-10">
+        <Button type="button" onClick={onNext} disabled={isLoading} className="bg-teal-500 hover:bg-teal-600 rounded-full px-10">
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
