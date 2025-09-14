@@ -4,8 +4,7 @@ import { useFormContext } from 'react-hook-form';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { User } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 type UserInfoStepProps = {
@@ -69,7 +68,7 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
                      const coveragePeriod = coverageUntilAge - userAge;
                      field.onChange(coveragePeriod > 0 ? coveragePeriod : 0);
                   }} 
-                  value={userAge + field.value}
+                  value={userAge > 0 && field.value > 0 ? userAge + field.value : ''}
                   />
                 </FormControl>
                 <FormMessage />
@@ -78,8 +77,8 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
           />
       </CardContent>
       <CardFooter className="flex flex-col gap-4 max-w-sm mx-auto">
-        <Button type="button" onClick={onNext} className="w-full bg-teal-500 hover:bg-teal-600">ยืนยัน</Button>
-        <Button type="button" onClick={onClear} variant="outline" className="w-full">ล้างข้อมูล</Button>
+        <Button type="button" onClick={onNext} className="w-full bg-teal-500 hover:bg-teal-600 rounded-full">ยืนยัน</Button>
+        <Button type="button" onClick={onClear} variant="outline" className="w-full rounded-full">ล้างข้อมูล</Button>
       </CardFooter>
     </Card>
   );

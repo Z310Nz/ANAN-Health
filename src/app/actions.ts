@@ -7,10 +7,18 @@ import type { PremiumFormData, PremiumCalculation, YearlyPremium } from "@/lib/t
 function generateMockBreakdown(formData: PremiumFormData): { yearlyBreakdown: YearlyPremium[], chartData: PremiumCalculation['chartData'] } {
   const yearlyBreakdown: YearlyPremium[] = [];
   const chartData: PremiumCalculation['chartData'] = [];
-  let baseYearlyPremium = formData.coverageAmount * (0.001 + (formData.userAge - 18) * 0.0001);
+  
+  const totalPolicyAmount = formData.policies?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+  
+  let baseYearlyPremium = totalPolicyAmount * (0.001 + (formData.userAge - 18) * 0.0001);
   
   if (formData.gender === 'female') {
     baseYearlyPremium *= 0.95; // 5% discount for females
+  }
+
+  // Discount is applied to the base premium
+  if(formData.discount) {
+    baseYearlyPremium *= (100 - formData.discount) / 100;
   }
 
   const ridersYearlyPremium = (formData.riders?.length || 0) * 150;
@@ -45,11 +53,13 @@ export async function getPremiumSummary(
   formData: PremiumFormData
 ): Promise<PremiumCalculation> {
   try {
+    const totalPolicyAmount = formData.policies?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+    
     const input: PremiumCalculationInput = {
-      coverageAmount: formData.coverageAmount,
+      coverageAmount: totalPolicyAmount,
       coveragePeriod: formData.coveragePeriod,
       userAge: formData.userAge,
-      riders: formData.riders || [],
+      riders: formData.policies?.map(p => p.policy || '').filter(p => p) || [],
     };
 
     const aiResult = await calculatePremiumSummary(input);

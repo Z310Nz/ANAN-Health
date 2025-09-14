@@ -4,11 +4,19 @@ export type User = {
   avatarUrl: string;
 };
 
+export type Policy = {
+  policy?: string;
+  amount?: number;
+}
+
 export type PremiumFormData = {
   userAge: number;
   gender: 'male' | 'female';
-  coverageAmount: number;
   coveragePeriod: number;
+  policies?: Policy[];
+  discount?: number;
+  // The following are deprecated and will be removed
+  coverageAmount: number;
   riders: string[];
 };
 

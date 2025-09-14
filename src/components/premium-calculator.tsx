@@ -15,19 +15,23 @@ import { StepperIndicator } from '@/components/stepper-indicator';
 import UserInfoStep from '@/components/steps/user-info-step';
 import CoverageStep from '@/components/steps/coverage-step';
 import SummaryStep from '@/components/steps/summary-step';
-import { Button } from './ui/button';
 
 const SESSION_STORAGE_KEY = 'anan-health-calculator-session';
+
+const policySchema = z.object({
+  policy: z.string().optional(),
+  amount: z.coerce.number().optional(),
+});
 
 const FormSchema = z.object({
   userAge: z.coerce.number().min(18, "ต้องมีอายุอย่างน้อย 18 ปี").max(100, "อายุต้องไม่เกิน 100 ปี"),
   gender: z.enum(['male', 'female'], { required_error: "กรุณาเลือกเพศ" }),
-  coverageAmount: z.coerce.number().min(10000, "Must be at least 10,000").max(10000000, "Cannot exceed 10,000,000"),
   coveragePeriod: z.coerce.number().min(1, "Must be at least 1 year").max(50, "Cannot exceed 50 years"),
-  riders: z.array(z.string()).optional(),
+  policies: z.array(policySchema).optional(),
+  discount: z.coerce.number().optional(),
 });
 
-const steps = ["ข้อมูลส่วนตัว", "รายละเอียดความคุ้มครอง", "สรุป"];
+const steps = ["ข้อมูลส่วนตัว", "เลือกกรมธรรม์หลัก", "สรุป"];
 
 export default function PremiumCalculator() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -40,9 +44,9 @@ export default function PremiumCalculator() {
     defaultValues: {
       userAge: 30,
       gender: undefined,
-      coverageAmount: 500000,
       coveragePeriod: 20,
-      riders: ["critical_illness"],
+      policies: [{policy: undefined, amount: undefined}],
+      discount: undefined,
     },
   });
 
@@ -78,7 +82,7 @@ export default function PremiumCalculator() {
 
 
   const handleNext = async () => {
-    const fields: (keyof PremiumFormData)[] = [['userAge', 'gender', 'coveragePeriod'], ['coverageAmount', 'riders']][currentStep] as any;
+    const fields: (keyof PremiumFormData)[] = ['userAge', 'gender', 'coveragePeriod'];
     const isValid = await methods.trigger(fields);
     if (isValid) {
       setCurrentStep((prev) => prev + 1);
@@ -90,6 +94,9 @@ export default function PremiumCalculator() {
   };
   
   const handleCalculate = async (data: PremiumFormData) => {
+    const isValid = await methods.trigger(['policies', 'discount']);
+    if (!isValid) return;
+      
     setIsLoading(true);
     try {
       const result = await getPremiumSummary(data);
@@ -132,9 +139,9 @@ export default function PremiumCalculator() {
   };
 
   return (
-    <Card className="w-full max-w-4xl shadow-lg">
+    <Card className="w-full max-w-4xl shadow-lg border-none rounded-t-3xl mt-[-2.5rem] bg-white pt-8">
       <CardContent className="p-4 sm:p-8">
-        <div className="mb-8">
+        <div className="mb-8 hidden">
           <StepperIndicator steps={steps} currentStep={currentStep} />
         </div>
         <FormProvider {...methods}>

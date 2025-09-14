@@ -1,18 +1,12 @@
 'use client';
 
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useFieldArray } from 'react-hook-form';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { ShieldCheck, Loader2 } from 'lucide-react';
-
-const riders = [
-  { id: 'critical_illness', label: 'Critical Illness' },
-  { id: 'accidental_death', label: 'Accidental Death' },
-  { id: 'waiver_of_premium', label: 'Waiver of Premium' },
-];
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 type CoverageStepProps = {
   onBack: () => void;
@@ -20,97 +14,90 @@ type CoverageStepProps = {
 };
 
 export default function CoverageStep({ onBack, isLoading }: CoverageStepProps) {
-  const { control } = useFormContext();
+  const { control, formState: { errors } } = useFormContext();
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "policies",
+  });
 
   return (
     <Card className="border-0 shadow-none">
-      <CardHeader>
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <ShieldCheck className="h-6 w-6" />
-          </div>
-          <div>
-            <CardTitle className="text-2xl font-headline">Customize Your Coverage</CardTitle>
-            <CardDescription>Select the coverage amount, period, and any additional riders.</CardDescription>
-          </div>
-        </div>
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl font-headline">เลือกกรมธรรม์หลัก</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            control={control}
-            name="coverageAmount"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Coverage Amount</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="e.g., 500,000" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+      <CardContent className="space-y-4 max-w-lg mx-auto">
+        {fields.map((item, index) => (
+          <div key={item.id} className="grid grid-cols-2 gap-4">
+            <FormField
+              control={control}
+              name={`policies.${index}.policy`}
+              render={({ field }) => (
+                <FormItem>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="เลือกกรมธรรม์" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="policy1">กรมธรรม์ 1</SelectItem>
+                      <SelectItem value="policy2">กรมธรรม์ 2</SelectItem>
+                      <SelectItem value="policy3">กรมธรรม์ 3</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name={`policies.${index}.amount`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input type="number" placeholder="กรุณาใส่ตัวเลข" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        ))}
+         {fields.length < 4 && (
+            <Button type="button" variant="link" onClick={() => append({ policy: '', amount: '' })}>
+                + เพิ่มกรมธรรม์
+            </Button>
+         )}
+
+        <div className="flex items-center gap-4 pt-4">
+            <FormLabel className="w-24">ส่วนลด</FormLabel>
+            <FormField
+                control={control}
+                name="discount"
+                render={({ field }) => (
+                <FormItem className="flex-grow">
+                    <FormControl>
+                    <Input type="number" placeholder="กรุณาใส่ส่วนลด" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+            <span className="text-lg">%</span>
         </div>
-        <FormField
-          control={control}
-          name="riders"
-          render={() => (
-            <FormItem>
-              <div className="mb-4">
-                <FormLabel className="text-base">Additional Riders</FormLabel>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {riders.map((item) => (
-                  <FormField
-                    key={item.id}
-                    control={control}
-                    name="riders"
-                    render={({ field }) => {
-                      return (
-                        <FormItem
-                          key={item.id}
-                          className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow-sm"
-                        >
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value?.includes(item.id)}
-                              onCheckedChange={(checked) => {
-                                return checked
-                                  ? field.onChange([...(field.value || []), item.id])
-                                  : field.onChange(
-                                      field.value?.filter(
-                                        (value) => value !== item.id
-                                      )
-                                    );
-                              }}
-                            />
-                          </FormControl>
-                          <FormLabel className="font-normal">
-                            {item.label}
-                          </FormLabel>
-                        </FormItem>
-                      );
-                    }}
-                  />
-                ))}
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
       </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button type="button" variant="outline" onClick={onBack} disabled={isLoading}>
-          Back
+      <CardFooter className="flex justify-between max-w-lg mx-auto">
+        <Button type="button" variant="outline" onClick={onBack} disabled={isLoading} className="rounded-full px-10">
+          ย้อนกลับ
         </Button>
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" disabled={isLoading} className="bg-teal-500 hover:bg-teal-600 rounded-full px-10">
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Calculating...
             </>
           ) : (
-            'Calculate Premium'
+            'ยืนยัน'
           )}
         </Button>
       </CardFooter>
