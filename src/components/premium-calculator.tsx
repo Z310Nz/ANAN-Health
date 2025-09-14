@@ -78,7 +78,7 @@ export default function PremiumCalculator() {
 
 
   const handleNext = async () => {
-    const fields: (keyof PremiumFormData)[] = [['userAge', 'gender'], ['coverageAmount', 'coveragePeriod', 'riders']][currentStep] as any;
+    const fields: (keyof PremiumFormData)[] = [['userAge', 'gender', 'coveragePeriod'], ['coverageAmount', 'riders']][currentStep] as any;
     const isValid = await methods.trigger(fields);
     if (isValid) {
       setCurrentStep((prev) => prev + 1);
@@ -118,6 +118,7 @@ export default function PremiumCalculator() {
       ...methods.getValues(),
       userAge: 30,
       gender: undefined,
+      coveragePeriod: 20,
     });
   }
 

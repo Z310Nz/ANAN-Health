@@ -20,8 +20,7 @@ type CoverageStepProps = {
 };
 
 export default function CoverageStep({ onBack, isLoading }: CoverageStepProps) {
-  const { control, watch } = useFormContext();
-  const userAge = watch('userAge');
+  const { control } = useFormContext();
 
   return (
     <Card className="border-0 shadow-none">
@@ -46,25 +45,6 @@ export default function CoverageStep({ onBack, isLoading }: CoverageStepProps) {
                 <FormLabel>Coverage Amount</FormLabel>
                 <FormControl>
                   <Input type="number" placeholder="e.g., 500,000" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={control}
-            name="coveragePeriod"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>ความคุ้มครองจนถึงอายุ (ปี)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="กรุณาใส่อายุ" {...field} onChange={(e) => {
-                     const coverageUntilAge = Number(e.target.value);
-                     const coveragePeriod = coverageUntilAge - userAge;
-                     field.onChange(coveragePeriod > 0 ? coveragePeriod : 0);
-                  }} 
-                  value={userAge + field.value}
-                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

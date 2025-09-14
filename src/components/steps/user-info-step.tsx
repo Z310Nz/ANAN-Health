@@ -14,7 +14,8 @@ type UserInfoStepProps = {
 };
 
 export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
-  const { control } = useFormContext();
+  const { control, watch } = useFormContext();
+  const userAge = watch('userAge');
 
   return (
     <Card className="border-0 shadow-none">
@@ -56,6 +57,25 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
             </FormItem>
           )}
         />
+        <FormField
+            control={control}
+            name="coveragePeriod"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>ความคุ้มครองจนถึงอายุ (ปี)</FormLabel>
+                <FormControl>
+                  <Input type="number" placeholder="กรุณาใส่อายุ" {...field} onChange={(e) => {
+                     const coverageUntilAge = Number(e.target.value);
+                     const coveragePeriod = coverageUntilAge - userAge;
+                     field.onChange(coveragePeriod > 0 ? coveragePeriod : 0);
+                  }} 
+                  value={userAge + field.value}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
       </CardContent>
       <CardFooter className="flex flex-col gap-4 max-w-sm mx-auto">
         <Button type="button" onClick={onNext} className="w-full bg-teal-500 hover:bg-teal-600">ยืนยัน</Button>
