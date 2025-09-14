@@ -5,16 +5,14 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 type CoverageStepProps = {
   onBack: () => void;
   onNext: () => void;
-  isLoading: boolean;
 };
 
-export default function CoverageStep({ onBack, onNext, isLoading }: CoverageStepProps) {
+export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
   const { control, formState: { errors } } = useFormContext();
   const { fields, append, remove } = useFieldArray({
     control,
@@ -88,18 +86,11 @@ export default function CoverageStep({ onBack, onNext, isLoading }: CoverageStep
         </div>
       </CardContent>
       <CardFooter className="flex justify-between max-w-lg mx-auto">
-        <Button type="button" variant="outline" onClick={onBack} disabled={isLoading} className="rounded-full px-10">
+        <Button type="button" variant="outline" onClick={onBack} className="rounded-full px-10">
           ย้อนกลับ
         </Button>
-        <Button type="button" onClick={onNext} disabled={isLoading} className="bg-teal-500 hover:bg-teal-600 rounded-full px-10">
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Calculating...
-            </>
-          ) : (
-            'ยืนยัน'
-          )}
+        <Button type="button" onClick={onNext} className="bg-teal-500 hover:bg-teal-600 rounded-full px-10">
+          ยืนยัน
         </Button>
       </CardFooter>
     </Card>

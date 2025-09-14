@@ -6,14 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2 } from 'lucide-react';
 
 type RidersStepProps = {
   onBack: () => void;
-  isLoading: boolean;
+  onNext: () => void;
 };
 
-export default function RidersStep({ onBack, isLoading }: RidersStepProps) {
+export default function RidersStep({ onBack, onNext }: RidersStepProps) {
   const { control } = useFormContext();
   const { fields } = useFieldArray({
     control,
@@ -59,18 +58,11 @@ export default function RidersStep({ onBack, isLoading }: RidersStepProps) {
         ))}
       </CardContent>
       <CardFooter className="flex justify-between max-w-lg mx-auto">
-        <Button type="button" variant="outline" onClick={onBack} disabled={isLoading} className="rounded-full px-10">
+        <Button type="button" variant="outline" onClick={onBack} className="rounded-full px-10">
           ย้อนกลับ
         </Button>
-        <Button type="submit" disabled={isLoading} className="bg-teal-500 hover:bg-teal-600 rounded-full px-10">
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              กำลังคำนวณ...
-            </>
-          ) : (
-            'ยืนยัน'
-          )}
+        <Button type="button" onClick={onNext} className="bg-teal-500 hover:bg-teal-600 rounded-full px-10">
+            ยืนยัน
         </Button>
       </CardFooter>
     </Card>

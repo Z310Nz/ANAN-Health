@@ -15,6 +15,7 @@ import { StepperIndicator } from '@/components/stepper-indicator';
 import UserInfoStep from '@/components/steps/user-info-step';
 import CoverageStep from '@/components/steps/coverage-step';
 import RidersStep from '@/components/steps/riders-step';
+import ReviewStep from '@/components/steps/review-step';
 import SummaryStep from '@/components/steps/summary-step';
 
 const SESSION_STORAGE_KEY = 'anan-health-calculator-session';
@@ -39,7 +40,7 @@ const FormSchema = z.object({
   discount: z.coerce.number().optional(),
 });
 
-const steps = ["ข้อมูลส่วนตัว", "เลือกกรมธรรม์หลัก", "เลือกอนุสัญญา", "สรุป"];
+const steps = ["ข้อมูลส่วนตัว", "เลือกกรมธรรม์หลัก", "เลือกอนุสัญญา", "สรุปเบี้ยประกัน", "สรุป"];
 
 export default function PremiumCalculator() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -105,16 +106,14 @@ export default function PremiumCalculator() {
       fieldsToValidate = ['userAge', 'gender', 'coveragePeriod'];
     } else if (currentStep === 1) {
       fieldsToValidate = ['policies', 'discount'];
+    } else if (currentStep === 2) {
+      fieldsToValidate = ['riders'];
     }
     
     const isValid = await methods.trigger(fieldsToValidate);
 
     if (isValid) {
-      if (currentStep === 2) {
-        await methods.handleSubmit(handleCalculate)();
-      } else {
-        setCurrentStep((prev) => prev + 1);
-      }
+      setCurrentStep((prev) => prev + 1);
     }
   };
 
@@ -127,7 +126,7 @@ export default function PremiumCalculator() {
     try {
       const result = await getPremiumSummary(data);
       setCalculation(result);
-      setCurrentStep(3);
+      setCurrentStep(4);
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -169,10 +168,12 @@ export default function PremiumCalculator() {
         case 0:
             return <UserInfoStep onNext={handleNext} onClear={handleClear} />;
         case 1:
-            return <CoverageStep onBack={handleBack} onNext={handleNext} isLoading={false} />;
+            return <CoverageStep onBack={handleBack} onNext={handleNext} />;
         case 2:
-            return <RidersStep onBack={handleBack} isLoading={isLoading} />;
+            return <RidersStep onBack={handleBack} onNext={handleNext} />;
         case 3:
+            return <ReviewStep onBack={handleBack} isLoading={isLoading} />;
+        case 4:
             if (calculation) {
                 return (
                     <SummaryStep
