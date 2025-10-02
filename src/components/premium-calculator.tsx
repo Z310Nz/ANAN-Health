@@ -14,7 +14,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { StepperIndicator } from '@/components/stepper-indicator';
 import UserInfoStep from '@/components/steps/user-info-step';
 import CoverageStep from '@/components/steps/coverage-step';
-import RidersStep from '@/components/steps/riders-step';
 import ReviewStep from '@/components/steps/review-step';
 import SummaryStep from '@/components/steps/summary-step';
 
@@ -37,10 +36,9 @@ const FormSchema = z.object({
   coveragePeriod: z.coerce.number().min(1, "Must be at least 1 year").max(50, "Cannot exceed 50 years"),
   policies: z.array(policySchema).optional(),
   riders: z.array(riderSchema).optional(),
-  discount: z.coerce.number().optional(),
 });
 
-const steps = ["ข้อมูลส่วนตัว", "เลือกกรมธรรม์หลัก", "เลือกอนุสัญญา", "สรุปเบี้ยประกัน", "สรุป"];
+const steps = ["ข้อมูลส่วนตัว", "เลือกกรมธรรม์", "สรุปเบี้ยประกัน", "สรุป"];
 
 type PremiumCalculatorProps = {
   onBackToWelcome: () => void;
@@ -66,7 +64,6 @@ export default function PremiumCalculator({ onBackToWelcome }: PremiumCalculator
         { name: 'Package 4', selected: false, amount: undefined },
         { name: 'Package 5', selected: false, amount: undefined },
       ],
-      discount: undefined,
     },
   });
 
@@ -109,9 +106,7 @@ export default function PremiumCalculator({ onBackToWelcome }: PremiumCalculator
     if (currentStep === 0) {
       fieldsToValidate = ['userAge', 'gender', 'coveragePeriod'];
     } else if (currentStep === 1) {
-      fieldsToValidate = ['policies', 'discount'];
-    } else if (currentStep === 2) {
-      fieldsToValidate = ['riders'];
+      fieldsToValidate = ['policies', 'riders'];
     }
     
     const isValid = await methods.trigger(fieldsToValidate);
@@ -130,7 +125,7 @@ export default function PremiumCalculator({ onBackToWelcome }: PremiumCalculator
     try {
       const result = await getPremiumSummary(data);
       setCalculation(result);
-      setCurrentStep(4);
+      setCurrentStep(3);
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -174,10 +169,8 @@ export default function PremiumCalculator({ onBackToWelcome }: PremiumCalculator
         case 1:
             return <CoverageStep onBack={handleBack} onNext={handleNext} />;
         case 2:
-            return <RidersStep onBack={handleBack} onNext={handleNext} />;
-        case 3:
             return <ReviewStep onBack={handleBack} isLoading={isLoading} />;
-        case 4:
+        case 3:
             if (calculation) {
                 return (
                     <SummaryStep

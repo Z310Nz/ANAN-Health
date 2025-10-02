@@ -21,7 +21,6 @@ export type PremiumFormData = {
   coveragePeriod: number;
   policies?: Policy[];
   riders?: Rider[];
-  discount?: number;
   // The following are deprecated and will be removed
   coverageAmount: number;
 };

@@ -16,11 +16,6 @@ function generateMockBreakdown(formData: PremiumFormData): { yearlyBreakdown: Ye
     baseYearlyPremium *= 0.95; // 5% discount for females
   }
 
-  // Discount is applied to the base premium
-  if(formData.discount) {
-    baseYearlyPremium *= (100 - formData.discount) / 100;
-  }
-
   const selectedRiders = formData.riders?.filter(r => r.selected) || [];
   const ridersYearlyPremium = selectedRiders.reduce((sum, r) => sum + (r.amount || 0), 0);
 
