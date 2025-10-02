@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { X } from 'lucide-react';
+import type { Rider } from '@/lib/types';
 
 type CoverageStepProps = {
   onBack: () => void;
@@ -16,7 +17,7 @@ type CoverageStepProps = {
 };
 
 export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
-  const { control } = useFormContext();
+  const { control, getValues } = useFormContext();
   
   const { fields: policyFields, append: appendPolicy, remove: removePolicy } = useFieldArray({
     control,
@@ -27,6 +28,15 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
     control,
     name: "riders",
   });
+  
+  const riders: Rider[] = getValues('riders');
+
+  const riderCategories = {
+    'ค่ารักษา': riders.map((r, i) => ({...r, index: i})).filter(r => r.category === 'ค่ารักษา'),
+    'ชดเชยรายวัน': riders.map((r, i) => ({...r, index: i})).filter(r => r.category === 'ชดเชยรายวัน'),
+    'ชดเชยโรคร้ายแรง': riders.map((r, i) => ({...r, index: i})).filter(r => r.category === 'ชดเชยโรคร้ายแรง'),
+    'ชดเชยอุบัติเหตุ': riders.map((r, i) => ({...r, index: i})).filter(r => r.category === 'ชดเชยอุบัติเหตุ'),
+  }
 
   return (
     <Card className="border-0 shadow-none">
@@ -38,7 +48,7 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
             <h3 className="text-lg font-semibold mb-4">กรมธรรม์หลัก</h3>
             <div className="space-y-4">
             {policyFields.map((item, index) => (
-            <div key={item.id} className="grid grid-cols-[1fr_1fr_auto] items-center gap-4">
+            <div key={item.id} className="grid grid-cols-[1fr_1fr_auto] items-start gap-4">
                 <FormField
                 control={control}
                 name={`policies.${index}.policy`}
@@ -97,37 +107,71 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
 
         <div>
             <h3 className="text-lg font-semibold mb-4">อนุสัญญา</h3>
-            <div className="space-y-4">
-            {riderFields.map((item, index) => (
-                <div key={item.id} className="grid grid-cols-[auto_1fr_1fr] items-center gap-4">
-                    <FormField
-                    control={control}
-                    name={`riders.${index}.selected`}
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormControl>
-                            <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            />
-                        </FormControl>
-                        </FormItem>
-                    )}
-                    />
-                    <span className="font-medium">{`Package ${index + 1}`}</span>
-                    <FormField
-                    control={control}
-                    name={`riders.${index}.amount`}
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormControl>
-                            <Input type="number" placeholder="กรุณาใส่ตัวเลข" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
+            <div className="space-y-6">
+
+            {Object.entries(riderCategories).map(([category, riders]) => (
+              riders.length > 0 && (
+                <div key={category}>
+                    <h4 className="font-semibold mb-4 text-gray-600">{category}</h4>
+                    <div className="space-y-4">
+                        {riders.map((item) => (
+                            <div key={item.id} className="grid grid-cols-[auto_1fr_1fr] items-start gap-4">
+                                <FormField
+                                    control={control}
+                                    name={`riders.${item.index}.selected`}
+                                    render={({ field }) => (
+                                        <FormItem className='flex items-center h-10'>
+                                            <FormControl>
+                                                <Checkbox
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <span className="font-medium flex items-center h-10">{item.name}</span>
+                                { category === 'ค่ารักษา' ? (
+                                    <FormField
+                                    control={control}
+                                    name={`riders.${item.index}.amount`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <Select onValueChange={(value) => field.onChange(Number(value))} defaultValue={field.value?.toString()}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="เลือกวงเงิน" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="1000000">1,000,000</SelectItem>
+                                                <SelectItem value="5000000">5,000,000</SelectItem>
+                                                <SelectItem value="10000000">10,000,000</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                    />
+                                ) : (
+                                    <FormField
+                                    control={control}
+                                    name={`riders.${item.index}.amount`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormControl>
+                                                <Input type="number" placeholder="กรุณาใส่ตัวเลข" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                    />
+                                )}
+                            </div>
+                        ))}
+                    </div>
                 </div>
+              )
             ))}
             </div>
         </div>

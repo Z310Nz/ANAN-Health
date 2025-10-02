@@ -26,6 +26,7 @@ const policySchema = z.object({
 
 const riderSchema = z.object({
   name: z.string(),
+  category: z.string(),
   selected: z.boolean().optional(),
   amount: z.coerce.number().optional(),
 });
@@ -58,11 +59,10 @@ export default function PremiumCalculator({ onBackToWelcome }: PremiumCalculator
       coveragePeriod: 20,
       policies: [{policy: undefined, amount: undefined}],
       riders: [
-        { name: 'Package 1', selected: false, amount: undefined },
-        { name: 'Package 2', selected: false, amount: undefined },
-        { name: 'Package 3', selected: false, amount: undefined },
-        { name: 'Package 4', selected: false, amount: undefined },
-        { name: 'Package 5', selected: false, amount: undefined },
+        { name: 'ค่ารักษา', category: 'ค่ารักษา', selected: false, amount: undefined },
+        { name: 'ชดเชยรายวัน', category: 'ชดเชยรายวัน', selected: false, amount: undefined },
+        { name: 'ชดเชยโรคร้ายแรง', category: 'ชดเชยโรคร้ายแรง', selected: false, amount: undefined },
+        { name: 'ชดเชยอุบัติเหตุ', category: 'ชดเชยอุบัติเหตุ', selected: false, amount: undefined },
       ],
     },
   });

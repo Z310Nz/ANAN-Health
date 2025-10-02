@@ -11,6 +11,7 @@ export type Policy = {
 
 export type Rider = {
     name: string;
+    category: string;
     selected?: boolean;
     amount?: number;
 }
