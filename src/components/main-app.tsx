@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AuthProvider, useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 import LoginScreen from '@/components/login-screen';
 import WelcomeScreen from '@/components/welcome-screen';
 import Dashboard from '@/components/dashboard';
@@ -39,8 +39,6 @@ function AppContent() {
 
 export default function MainApp() {
   return (
-    <AuthProvider>
       <AppContent />
-    </AuthProvider>
   )
 }
