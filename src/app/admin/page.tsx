@@ -16,20 +16,28 @@ const parseCsv = (csvData: string): Partial<Policy>[] => {
   const lines = csvData.trim().split('\n');
   if (lines.length < 2) return [];
 
-  const headers = lines[0].split(',').map(h => h.trim());
+  const headers = lines[0].split('\t').map(h => h.trim());
   
   return lines.slice(1).map(line => {
     if (!line.trim()) return null; // Skip empty lines
 
-    const values = line.split(',');
+    const values = line.split('\t');
     const policy: Partial<Policy> & { ages: Record<string, number> } = { ages: {} };
     
     headers.forEach((header, index) => {
         const value = values[index]?.trim().replace(/"/g, '');
         if (value === undefined || value === null || value === '') return;
 
-        if (header === 'id' || header === 'name' || header === 'segment' || header === 'segment_Code' || header === 'Budget' || header === 'Condition') {
-            policy[header as keyof Policy] = value;
+        if (header.toLowerCase() === 'segment') {
+            policy.name = value;
+        } else if (header.toLowerCase() === 'segment code') {
+            policy.id = value;
+        } else if (header.toLowerCase() === 'segment_code') {
+            policy.id = value; // Handle underscore version
+        } else if (header.toLowerCase() === 'budget') {
+            policy.Budget = value;
+        } else if (header.toLowerCase() === 'condition') {
+            policy.Condition = value;
         } else if (!isNaN(Number(header)) && !isNaN(Number(value))) {
             // It's an age column
             policy.ages[header] = Number(value);
@@ -132,15 +140,15 @@ export default function AdminPage() {
                 <CardTitle>Database Seeding Tool</CardTitle>
                 <CardDescription>
                     Paste your CSV data below to populate the policy collections in Firestore.
-                    The CSV header must include 'id', 'name', and any other policy fields.
-                    Age-based columns (0-100) will be mapped automatically.
+                    The CSV header must include 'segment', 'segment Code', and any other policy fields.
+                    The data should be tab-separated.
                 </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                 <div className="space-y-2">
                     <h3 className="font-semibold">Main Policies (Male)</h3>
                     <Textarea
-                    placeholder="id,name,segment,segment_Code,Budget,Condition,0,1,2..."
+                    placeholder="segment	segment Code	Budget	Condition	0	1	2..."
                     value={maleCsv}
                     onChange={(e) => setMaleCsv(e.target.value)}
                     rows={10}
@@ -150,7 +158,7 @@ export default function AdminPage() {
                 <div className="space-y-2">
                     <h3 className="font-semibold">Main Policies (Female)</h3>
                     <Textarea
-                    placeholder="id,name,segment,segment_Code,Budget,Condition,0,1,2..."
+                    placeholder="segment	segment Code	Budget	Condition	0	1	2..."
                     value={femaleCsv}
                     onChange={(e) => setFemaleCsv(e.target.value)}
                     rows={10}
