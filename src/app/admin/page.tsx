@@ -8,30 +8,37 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import AppHeader from '@/components/header';
+import type { Policy } from '@/lib/types';
+
 
 // Helper function to parse CSV data
-const parseCsv = (csvData: string): { id: string; name: string }[] => {
+const parseCsv = (csvData: string): Partial<Policy>[] => {
   const lines = csvData.trim().split('\n');
   const headers = lines[0].split(',').map(h => h.trim());
-  const idIndex = headers.indexOf('id');
-  const nameIndex = headers.indexOf('name');
-
-  if (idIndex === -1 || nameIndex === -1) {
-    throw new Error('CSV must have "id" and "name" columns.');
-  }
-
+  
   return lines.slice(1).map(line => {
     const values = line.split(',');
-    return {
-      id: values[idIndex]?.trim(),
-      name: values[nameIndex]?.trim().replace(/"/g, ''),
-    };
+    const policy: Partial<Policy> & { ages: Record<string, number> } = { ages: {} };
+    
+    headers.forEach((header, index) => {
+        const value = values[index]?.trim().replace(/"/g, '');
+        if (!value) return;
+
+        if (header === 'id' || header === 'name' || header === 'segment' || header === 'segment_Code' || header === 'Budget' || header === 'Condition') {
+            policy[header] = value;
+        } else if (!isNaN(Number(header)) && !isNaN(Number(value))) {
+            // It's an age column
+            policy.ages[header] = Number(value);
+        }
+    });
+
+    return policy;
   });
 };
 
 export default function AdminPage() {
-  const [maleCsv, setMaleCsv] = useState('id,name\nmale-policy-01,"กรมธรรม์ชาย 1"\nmale-policy-02,"กรมธรรม์ชาย 2"');
-  const [femaleCsv, setFemaleCsv] = useState('id,name\nfemale-policy-01,"กรมธรรม์หญิง 1"\nfemale-policy-02,"กรมธรรม์หญิง 2"');
+  const [maleCsv, setMaleCsv] = useState('id,name,segment,0,1,2,99,100');
+  const [femaleCsv, setFemaleCsv] = useState('id,name,segment,0,1,2,99,100');
   const [isLoading, setIsLoading] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -58,7 +65,7 @@ export default function AdminPage() {
         malePolicies.forEach(policy => {
           if (policy.id && policy.name) {
             const docRef = doc(maleCollectionRef, policy.id);
-            batch.set(docRef, { name: policy.name });
+            batch.set(docRef, policy);
           }
         });
       }
@@ -70,7 +77,7 @@ export default function AdminPage() {
         femalePolicies.forEach(policy => {
           if (policy.id && policy.name) {
             const docRef = doc(femaleCollectionRef, policy.id);
-            batch.set(docRef, { name: policy.name });
+            batch.set(docRef, policy);
           }
         });
       }
@@ -102,27 +109,28 @@ export default function AdminPage() {
                 <CardTitle>Database Seeding Tool</CardTitle>
                 <CardDescription>
                     Paste your CSV data below to populate the policy collections in Firestore.
-                    The CSV must contain 'id' and 'name' columns.
+                    The CSV header must include 'id', 'name', and any other policy fields.
+                    Age-based columns (0-100) will be mapped automatically.
                 </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                 <div className="space-y-2">
                     <h3 className="font-semibold">Main Policies (Male)</h3>
                     <Textarea
-                    placeholder="id,name..."
+                    placeholder="id,name,segment,0,1,2..."
                     value={maleCsv}
                     onChange={(e) => setMaleCsv(e.target.value)}
-                    rows={5}
+                    rows={10}
                     disabled={isLoading}
                     />
                 </div>
                 <div className="space-y-2">
                     <h3 className="font-semibold">Main Policies (Female)</h3>
                     <Textarea
-                    placeholder="id,name..."
+                    placeholder="id,name,segment,0,1,2..."
                     value={femaleCsv}
                     onChange={(e) => setFemaleCsv(e.target.value)}
-                    rows={5}
+                    rows={10}
                     disabled={isLoading}
                     />
                 </div>
