@@ -68,7 +68,7 @@ export default function AdminPage() {
       let policiesSeeded = 0;
 
       // Process male policies
-      if (maleCsv.trim().length > maleCsv.trim().split('\n')[0].length) { 
+      if (maleCsv.trim().split('\n').length > 1) { 
         const malePolicies = parseCsv(maleCsv);
         if (malePolicies.length > 0) {
             const maleCollectionRef = collection(firestore, 'main-policies-male');
@@ -83,7 +83,7 @@ export default function AdminPage() {
       }
 
       // Process female policies
-      if (femaleCsv.trim().length > femaleCsv.trim().split('\n')[0].length) { 
+      if (femaleCsv.trim().split('\n').length > 1) { 
         const femalePolicies = parseCsv(femaleCsv);
         if (femalePolicies.length > 0) {
             const femaleCollectionRef = collection(firestore, 'main-policies-female');
