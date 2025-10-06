@@ -1,0 +1,126 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the ANAN Health application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "lineUserId": {
+          "type": "string",
+          "description": "The user's ID from the LINE platform."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name from their LINE profile."
+        },
+        "pictureUrl": {
+          "type": "string",
+          "description": "URL of the user's profile picture from their LINE profile.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "lineUserId",
+        "displayName",
+        "pictureUrl"
+      ]
+    },
+    "PremiumCalculationSession": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PremiumCalculationSession",
+      "type": "object",
+      "description": "Represents a user's premium calculation session, storing input data and results.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the premium calculation session."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N PremiumCalculationSession)"
+        },
+        "inputData": {
+          "type": "string",
+          "description": "JSON string containing the user's input data for the premium calculation.",
+          "format": "json-string"
+        },
+        "calculationResult": {
+          "type": "string",
+          "description": "JSON string containing the premium calculation results.",
+          "format": "json-string"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the session was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the session was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "inputData",
+        "calculationResult",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles.  Path-based ownership ensures that only the user can access their own profile data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, corresponding to their Firebase Auth UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/premiumCalculationSessions/{sessionId}",
+        "definition": {
+          "entityName": "PremiumCalculationSession",
+          "schema": {
+            "$ref": "#/backend/entities/PremiumCalculationSession"
+          },
+          "description": "Stores premium calculation sessions owned by the user. Path-based ownership ensures that only the user can access their own calculation sessions.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user (Firebase Auth UID)."
+            },
+            {
+              "name": "sessionId",
+              "description": "The unique identifier for the premium calculation session."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to be secure, scalable, and easily debuggable, following the core design principles and strategy mandates. It ensures authorization independence by avoiding hierarchical authorization dependencies and denormalizing authorization context where needed. The structure also supports secure `list` operations using structural segregation.\n\n*   **Users Collection:** Stores user profiles. This data is private and path-based ownership is used for security. (`/users/{userId}`).\n*   **Premium Calculation Sessions:** Stores the premium calculation sessions data owned by individual users. This collection uses path-based ownership within the `/users/{userId}` hierarchy (`/users/{userId}/premiumCalculationSessions/{sessionId}`)."
+  }
+}

@@ -1,0 +1,108 @@
+/**
+ * @fileOverview
+ * This ruleset enforces a strict user-ownership model for all data.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores individual user profiles. Only the user can read or write their own profile.
+ * - /users/{userId}/premiumCalculationSessions/{sessionId}: Stores premium calculation sessions for each user. Only the owning user can manage these sessions.
+ *
+ * Key Security Decisions:
+ * - No user listing is allowed.
+ * - All write operations are strictly limited to the authenticated user who owns the data.
+ * - Read and write access to a user's data is controlled by matching the `request.auth.uid` against the path's `userId` parameter.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Enforces access control for user profiles. Only the authenticated user can read or write their own profile.
+     * @path /users/{userId}
+     * @allow (get) - Authenticated user requests their own profile data.
+     * @allow (create) - Authenticated user creates their own profile with a matching user ID.
+     * @allow (update) - Authenticated user updates their own profile.
+     * @allow (delete) - Authenticated user deletes their own profile.
+     * @deny (get) - Any unauthenticated user attempts to read a user profile.
+     * @deny (create) - Any unauthenticated user attempts to create a user profile.
+     * @deny (update) - Any unauthenticated user attempts to update another user's profile.
+     * @deny (delete) - Any unauthenticated user attempts to delete another user's profile.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId} {
+      // Helper function to check if the user is signed in
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      // Helper function to check if the authenticated user is the owner of the document
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      // Helper function to check if the authenticated user is the existing owner of the document
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      // Allows authenticated user to read their own profile
+      allow get: if isOwner(userId);
+
+      // Allows authenticated user to create their own profile if the userId matches their auth.uid
+      allow create: if isOwner(userId) && request.resource.data.id == request.auth.uid;
+
+      // Allows authenticated user to update their own profile
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+
+      // Allows authenticated user to delete their own profile
+      allow delete: if isExistingOwner(userId);
+
+      // Prevents listing of all user profiles
+      allow list: if false;
+    }
+
+    /**
+     * @description Enforces access control for premium calculation sessions. Only the authenticated user can read or write their own sessions.
+     * @path /users/{userId}/premiumCalculationSessions/{sessionId}
+     * @allow (get) - Authenticated user requests their own calculation session.
+     * @allow (create) - Authenticated user creates a calculation session under their own user ID.
+     * @allow (update) - Authenticated user updates their own calculation session.
+     * @allow (delete) - Authenticated user deletes their own calculation session.
+     * @deny (get) - Any unauthenticated user attempts to read a calculation session.
+     * @deny (create) - Any unauthenticated user attempts to create a calculation session under another user's ID.
+     * @deny (update) - Any unauthenticated user attempts to update another user's calculation session.
+     * @deny (delete) - Any unauthenticated user attempts to delete another user's calculation session.
+     * @principle Enforces document ownership for writes within a user's data tree.
+     */
+    match /users/{userId}/premiumCalculationSessions/{sessionId} {
+      // Helper function to check if the user is signed in
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      // Helper function to check if the authenticated user is the owner of the parent user document
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      // Helper function to check if the authenticated user is the existing owner of the parent user document
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      // Allows authenticated user to read their own calculation sessions
+      allow get: if isOwner(userId);
+
+      // Allows authenticated user to create a new calculation session under their user ID
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+
+      // Allows authenticated user to update their own calculation sessions
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+
+      // Allows authenticated user to delete their own calculation sessions
+      allow delete: if isExistingOwner(userId);
+
+      // Allows the user to list their own calculation sessions.
+      allow list: if isOwner(userId);
+    }
+  }
+}
