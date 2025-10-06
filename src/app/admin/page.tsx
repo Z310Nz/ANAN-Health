@@ -22,10 +22,12 @@ const parseCsv = (csvData: string): Partial<Policy>[] => {
     
     headers.forEach((header, index) => {
         const value = values[index]?.trim().replace(/"/g, '');
-        if (!value) return;
+        if (value === undefined || value === null || value === '') return;
 
-        if (header === 'id' || header === 'name' || header === 'segment' || header === 'segment_Code' || header === 'Budget' || header === 'Condition') {
+        if (header === 'id' || header === 'name' || header === 'segment' || header === 'Budget' || header === 'Condition') {
             policy[header] = value;
+        } else if (header === 'segment_Code' || header === 'segment Code') {
+            policy['segment_Code'] = value;
         } else if (!isNaN(Number(header)) && !isNaN(Number(value))) {
             // It's an age column
             policy.ages[header] = Number(value);
@@ -37,8 +39,8 @@ const parseCsv = (csvData: string): Partial<Policy>[] => {
 };
 
 export default function AdminPage() {
-  const [maleCsv, setMaleCsv] = useState('id,name,segment,0,1,2,99,100');
-  const [femaleCsv, setFemaleCsv] = useState('id,name,segment,0,1,2,99,100');
+  const [maleCsv, setMaleCsv] = useState('id,name,segment,segment_Code,Budget,Condition,0,1,2,99,100');
+  const [femaleCsv, setFemaleCsv] = useState('id,name,segment,segment_Code,Budget,Condition,0,1,2,99,100');
   const [isLoading, setIsLoading] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -59,7 +61,7 @@ export default function AdminPage() {
       const batch = writeBatch(firestore);
 
       // Process male policies
-      if (maleCsv) {
+      if (maleCsv.trim().length > maleCsv.trim().split('\n')[0].length) { // check if there is more than just a header
         const malePolicies = parseCsv(maleCsv);
         const maleCollectionRef = collection(firestore, 'main-policies-male');
         malePolicies.forEach(policy => {
@@ -71,7 +73,7 @@ export default function AdminPage() {
       }
 
       // Process female policies
-      if (femaleCsv) {
+      if (femaleCsv.trim().length > femaleCsv.trim().split('\n')[0].length) { // check if there is more than just a header
         const femalePolicies = parseCsv(femaleCsv);
         const femaleCollectionRef = collection(firestore, 'main-policies-female');
         femalePolicies.forEach(policy => {
@@ -117,7 +119,7 @@ export default function AdminPage() {
                 <div className="space-y-2">
                     <h3 className="font-semibold">Main Policies (Male)</h3>
                     <Textarea
-                    placeholder="id,name,segment,0,1,2..."
+                    placeholder="id,name,segment,segment_Code,Budget,Condition,0,1,2..."
                     value={maleCsv}
                     onChange={(e) => setMaleCsv(e.target.value)}
                     rows={10}
@@ -127,7 +129,7 @@ export default function AdminPage() {
                 <div className="space-y-2">
                     <h3 className="font-semibold">Main Policies (Female)</h3>
                     <Textarea
-                    placeholder="id,name,segment,0,1,2..."
+                    placeholder="id,name,segment,segment_Code,Budget,Condition,0,1,2..."
                     value={femaleCsv}
                     onChange={(e) => setFemaleCsv(e.target.value)}
                     rows={10}
