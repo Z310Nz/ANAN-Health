@@ -28,10 +28,8 @@ const parseCsv = (csvData: string): Partial<Policy>[] => {
         const value = values[index]?.trim().replace(/"/g, '');
         if (value === undefined || value === null || value === '') return;
 
-        if (header === 'id' || header === 'name' || header === 'segment' || header === 'Budget' || header === 'Condition') {
-            policy[header] = value;
-        } else if (header === 'segment_Code' || header === 'segment Code') {
-            policy['segment_Code'] = value;
+        if (header === 'id' || header === 'name' || header === 'segment' || header === 'segment_Code' || header === 'Budget' || header === 'Condition') {
+            policy[header as keyof Policy] = value;
         } else if (!isNaN(Number(header)) && !isNaN(Number(value))) {
             // It's an age column
             policy.ages[header] = Number(value);
