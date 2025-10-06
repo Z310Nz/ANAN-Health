@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/contexts/auth-context';
+import { AuthProvider, useAuth } from '@/contexts/auth-context';
 import LoginScreen from '@/components/login-screen';
 import WelcomeScreen from '@/components/welcome-screen';
 import Dashboard from '@/components/dashboard';
 import { Skeleton } from './ui/skeleton';
 
-export default function MainApp() {
+function AppContent() {
   const { user, loading } = useAuth();
   const [started, setStarted] = useState(false);
 
@@ -34,4 +34,13 @@ export default function MainApp() {
   }
   
   return <Dashboard onBackToWelcome={() => setStarted(false)} />;
+}
+
+
+export default function MainApp() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  )
 }

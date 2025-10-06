@@ -8,7 +8,9 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import type { Rider } from '@/lib/types';
+import type { Rider, Policy } from '@/lib/types';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
 
 type CoverageStepProps = {
   onBack: () => void;
@@ -24,6 +26,18 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
   });
   
   const riders: Rider[] = getValues('riders');
+  const gender: 'male' | 'female' = getValues('gender');
+
+  const firestore = useFirestore();
+  
+  const policiesCollectionRef = useMemoFirebase(() => {
+    if (!firestore || !gender) return null;
+    const collectionName = gender === 'male' ? 'main-policies-male' : 'main-policies-female';
+    return collection(firestore, collectionName);
+  }, [firestore, gender]);
+
+  const { data: policies, isLoading: policiesLoading } = useCollection<Policy>(policiesCollectionRef);
+
 
   const riderCategories = {
     'ค่ารักษา': riders.map((r, i) => ({...r, index: i})).filter(r => r.category === 'ค่ารักษา'),
@@ -47,16 +61,16 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                   name="policies.0.policy"
                   render={({ field }) => (
                       <FormItem>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={policiesLoading}>
                           <FormControl>
                           <SelectTrigger>
-                              <SelectValue placeholder="เลือกกรมธรรม์" />
+                              <SelectValue placeholder={policiesLoading ? "Loading..." : "เลือกกรมธรรม์"} />
                           </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                          <SelectItem value="policy1">กรมธรรม์ 1</SelectItem>
-                          <SelectItem value="policy2">กรมธรรม์ 2</SelectItem>
-                          <SelectItem value="policy3">กรมธรรม์ 3</SelectItem>
+                            {policies?.map((policy) => (
+                              <SelectItem key={policy.id} value={policy.id}>{policy.name}</SelectItem>
+                            ))}
                           </SelectContent>
                       </Select>
                       <FormMessage />
@@ -92,7 +106,7 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                     <h4 className="font-semibold mb-4 text-gray-600">{category}</h4>
                     <div className="space-y-4">
                         {riders.map((item) => (
-                            <div key={item.id} className="grid grid-cols-[auto_1fr_1fr] items-start gap-4">
+                            <div key={item.name} className="grid grid-cols-[auto_1fr_1fr] items-start gap-4">
                                 <FormField
                                     control={control}
                                     name={`riders.${item.index}.selected`}

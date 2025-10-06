@@ -74,6 +74,25 @@
         "createdAt",
         "updatedAt"
       ]
+    },
+    "Policy": {
+      "title": "Policy",
+      "type": "object",
+      "description": "Represents an insurance policy.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the policy."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the insurance policy."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
     }
   },
   "auth": {
@@ -101,26 +120,38 @@
         }
       },
       {
-        "path": "/users/{userId}/premiumCalculationSessions/{sessionId}",
+        "path": "/main-policies-male/{policyId}",
         "definition": {
-          "entityName": "PremiumCalculationSession",
+          "entityName": "Policy",
           "schema": {
-            "$ref": "#/backend/entities/PremiumCalculationSession"
+            "$ref": "#/backend/entities/Policy"
           },
-          "description": "Stores premium calculation sessions owned by the user. Path-based ownership ensures that only the user can access their own calculation sessions.",
+          "description": "Stores main insurance policies available for males.",
           "params": [
             {
-              "name": "userId",
-              "description": "The unique identifier of the user (Firebase Auth UID)."
-            },
+              "name": "policyId",
+              "description": "The unique identifier of the policy."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/main-policies-female/{policyId}",
+        "definition": {
+          "entityName": "Policy",
+          "schema": {
+            "$ref": "#/backend/entities/Policy"
+          },
+          "description": "Stores main insurance policies available for females.",
+          "params": [
             {
-              "name": "sessionId",
-              "description": "The unique identifier for the premium calculation session."
+              "name": "policyId",
+              "description": "The unique identifier of the policy."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to be secure, scalable, and easily debuggable, following the core design principles and strategy mandates. It ensures authorization independence by avoiding hierarchical authorization dependencies and denormalizing authorization context where needed. The structure also supports secure `list` operations using structural segregation.\n\n*   **Users Collection:** Stores user profiles. This data is private and path-based ownership is used for security. (`/users/{userId}`).\n*   **Premium Calculation Sessions:** Stores the premium calculation sessions data owned by individual users. This collection uses path-based ownership within the `/users/{userId}` hierarchy (`/users/{userId}/premiumCalculationSessions/{sessionId}`)."
+    "reasoning": "The Firestore structure is designed to be secure, scalable, and easily debuggable, following the core design principles and strategy mandates. It ensures authorization independence by avoiding hierarchical authorization dependencies and denormalizing authorization context where needed. The structure also supports secure `list` operations using structural segregation.\n\n*   **Users Collection:** Stores user profiles. This data is private and path-based ownership is used for security. (`/users/{userId}`).\n*   **Main Policies (Male/Female):** Stores the list of available main insurance policies, segregated by gender for potentially different offerings. These are public-read collections. (`/main-policies-male/{policyId}` and `/main-policies-female/{policyId}`)."
   }
 }

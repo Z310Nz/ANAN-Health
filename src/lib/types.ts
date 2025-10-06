@@ -5,8 +5,8 @@ export type User = {
 };
 
 export type Policy = {
-  policy?: string;
-  amount?: number;
+  id: string;
+  name: string;
 }
 
 export type Rider = {
@@ -20,7 +20,7 @@ export type PremiumFormData = {
   userAge: number;
   gender: 'male' | 'female';
   coveragePeriod: number;
-  policies?: Policy[];
+  policies?: { policy?: string, amount?: number }[];
   riders?: Rider[];
   // The following are deprecated and will be removed
   coverageAmount: number;
