@@ -163,7 +163,7 @@
         "definition": {
           "entityName": "Policy",
           "schema": {
-            "$ref": "#/backend/entities/Policy"
+            "$ref": "#/backend_entities/Policy"
           },
           "description": "Stores main insurance policies available for females. Publicly readable and writable by any authenticated user.",
           "params": [

@@ -30,10 +30,8 @@ const parseCsv = (csvData: string): Partial<Policy>[] => {
 
         if (header.toLowerCase() === 'segment') {
             policy.name = value;
-        } else if (header.toLowerCase() === 'segment code') {
+        } else if (header.toLowerCase() === 'segment_code' || header.toLowerCase() === 'segment code') {
             policy.id = value;
-        } else if (header.toLowerCase() === 'segment_code') {
-            policy.id = value; // Handle underscore version
         } else if (header.toLowerCase() === 'budget') {
             policy.Budget = value;
         } else if (header.toLowerCase() === 'condition') {
@@ -53,8 +51,8 @@ const parseCsv = (csvData: string): Partial<Policy>[] => {
 };
 
 export default function AdminPage() {
-  const [maleCsv, setMaleCsv] = useState('id,name,segment,segment_Code,Budget,Condition,0,1,2,99,100');
-  const [femaleCsv, setFemaleCsv] = useState('id,name,segment,segment_Code,Budget,Condition,0,1,2,99,100');
+  const [maleCsv, setMaleCsv] = useState('segment	segment_Code	Budget	Condition\n');
+  const [femaleCsv, setFemaleCsv] = useState('segment	segment_Code	Budget	Condition\n');
   const [isLoading, setIsLoading] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -76,7 +74,7 @@ export default function AdminPage() {
       let policiesSeeded = 0;
 
       // Process male policies
-      if (maleCsv.trim().split('\n').length > 1) { 
+      if (maleCsv.trim().split('\n').length > 1) {
         const malePolicies = parseCsv(maleCsv);
         if (malePolicies.length > 0) {
             const maleCollectionRef = collection(firestore, 'main-policies-male');
@@ -139,16 +137,15 @@ export default function AdminPage() {
                 <CardHeader>
                 <CardTitle>Database Seeding Tool</CardTitle>
                 <CardDescription>
-                    Paste your CSV data below to populate the policy collections in Firestore.
-                    The CSV header must include 'segment', 'segment Code', and any other policy fields.
-                    The data should be tab-separated.
+                    Paste your tab-separated data below to populate the policy collections in Firestore.
+                    The header must include at least 'segment' and 'segment_Code'.
                 </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                 <div className="space-y-2">
                     <h3 className="font-semibold">Main Policies (Male)</h3>
                     <Textarea
-                    placeholder="segment	segment Code	Budget	Condition	0	1	2..."
+                    placeholder="segment	segment_Code	Budget	Condition	0	1	2..."
                     value={maleCsv}
                     onChange={(e) => setMaleCsv(e.target.value)}
                     rows={10}
@@ -158,7 +155,7 @@ export default function AdminPage() {
                 <div className="space-y-2">
                     <h3 className="font-semibold">Main Policies (Female)</h3>
                     <Textarea
-                    placeholder="segment	segment Code	Budget	Condition	0	1	2..."
+                    placeholder="segment	segment_Code	Budget	Condition	0	1	2..."
                     value={femaleCsv}
                     onChange={(e) => setFemaleCsv(e.target.value)}
                     rows={10}
