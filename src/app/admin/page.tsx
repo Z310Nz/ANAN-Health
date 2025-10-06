@@ -14,9 +14,13 @@ import type { Policy } from '@/lib/types';
 // Helper function to parse CSV data
 const parseCsv = (csvData: string): Partial<Policy>[] => {
   const lines = csvData.trim().split('\n');
+  if (lines.length < 2) return [];
+
   const headers = lines[0].split(',').map(h => h.trim());
   
   return lines.slice(1).map(line => {
+    if (!line.trim()) return null; // Skip empty lines
+
     const values = line.split(',');
     const policy: Partial<Policy> & { ages: Record<string, number> } = { ages: {} };
     
@@ -34,8 +38,12 @@ const parseCsv = (csvData: string): Partial<Policy>[] => {
         }
     });
 
-    return policy;
-  });
+    // Only return a policy object if it has an id and a name
+    if (policy.id && policy.name) {
+      return policy;
+    }
+    return null;
+  }).filter((p): p is Partial<Policy> => p !== null); // Filter out null values
 };
 
 export default function AdminPage() {
@@ -59,37 +67,52 @@ export default function AdminPage() {
 
     try {
       const batch = writeBatch(firestore);
+      let policiesSeeded = 0;
 
       // Process male policies
-      if (maleCsv.trim().length > maleCsv.trim().split('\n')[0].length) { // check if there is more than just a header
+      if (maleCsv.trim().length > maleCsv.trim().split('\n')[0].length) { 
         const malePolicies = parseCsv(maleCsv);
-        const maleCollectionRef = collection(firestore, 'main-policies-male');
-        malePolicies.forEach(policy => {
-          if (policy.id && policy.name) {
-            const docRef = doc(maleCollectionRef, policy.id);
-            batch.set(docRef, policy);
-          }
-        });
+        if (malePolicies.length > 0) {
+            const maleCollectionRef = collection(firestore, 'main-policies-male');
+            malePolicies.forEach(policy => {
+              if (policy.id) { // Ensure policy and ID exist
+                const docRef = doc(maleCollectionRef, policy.id);
+                batch.set(docRef, policy);
+                policiesSeeded++;
+              }
+            });
+        }
       }
 
       // Process female policies
-      if (femaleCsv.trim().length > femaleCsv.trim().split('\n')[0].length) { // check if there is more than just a header
+      if (femaleCsv.trim().length > femaleCsv.trim().split('\n')[0].length) { 
         const femalePolicies = parseCsv(femaleCsv);
-        const femaleCollectionRef = collection(firestore, 'main-policies-female');
-        femalePolicies.forEach(policy => {
-          if (policy.id && policy.name) {
-            const docRef = doc(femaleCollectionRef, policy.id);
-            batch.set(docRef, policy);
-          }
+        if (femalePolicies.length > 0) {
+            const femaleCollectionRef = collection(firestore, 'main-policies-female');
+            femalePolicies.forEach(policy => {
+              if (policy.id) { // Ensure policy and ID exist
+                const docRef = doc(femaleCollectionRef, policy.id);
+                batch.set(docRef, policy);
+                policiesSeeded++;
+              }
+            });
+        }
+      }
+
+      if (policiesSeeded > 0) {
+        await batch.commit();
+        toast({
+          title: 'Success!',
+          description: `Database has been seeded with ${policiesSeeded} policy records.`,
+        });
+      } else {
+        toast({
+          title: 'No Data Seeded',
+          description: 'Could not find valid policy data to import. Please check your CSV content.',
+          variant: 'destructive',
         });
       }
 
-      await batch.commit();
-
-      toast({
-        title: 'Success!',
-        description: 'Database has been seeded with the new policy data.',
-      });
     } catch (error) {
       console.error('Seeding error:', error);
       toast({
