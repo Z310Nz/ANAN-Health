@@ -42,8 +42,8 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
       const newCoveragePeriod = coverageUntilAge - currentAge;
       setValue('coveragePeriod', newCoveragePeriod, { shouldValidate: true });
     } else {
-      // If input is invalid or less than current age, set period to 0
-      setValue('coveragePeriod', 0, { shouldValidate: true });
+      // If input is invalid or less than current age, set period to 0 or some other default
+       setValue('coveragePeriod', 0, { shouldValidate: true });
     }
   };
 
@@ -56,7 +56,7 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
       if (!isNaN(coverageUntilAge) && newAge > 0 && coverageUntilAge > newAge) {
           const newCoveragePeriod = coverageUntilAge - newAge;
           setValue('coveragePeriod', newCoveragePeriod, { shouldValidate: true });
-      } else {
+      } else if (newAge <= 0 || coverageUntilAge <= newAge) {
           setValue('coveragePeriod', 0, { shouldValidate: true });
       }
   }
