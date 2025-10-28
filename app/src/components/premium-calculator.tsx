@@ -7,7 +7,6 @@ import { z } from 'zod';
 
 import type { PremiumFormData, PremiumCalculation } from '@/lib/types';
 import { getPremiumSummary } from '@/app/actions';
-import { exportToCsv } from '@/lib/csv';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -167,11 +166,9 @@ export default function PremiumCalculator() {
 
 
   const handleExport = () => {
-    if (calculation) {
-      const headers = ["Year", "Base Premium", "Riders Premium", "Total Premium"];
-      const data = calculation.yearlyBreakdown.map(y => [y.year, y.base, y.riders, y.total]);
-      exportToCsv("premium_breakdown.csv", headers, data);
-    }
+    if (!calculation) return;
+    // This is a placeholder for CSV export functionality
+    alert('CSV export functionality is not implemented in this demo.');
   };
   
   const renderStep = () => {
