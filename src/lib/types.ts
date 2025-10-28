@@ -1,14 +1,16 @@
 export type Policy = {
   id: string;
   name: string;
-}
+  // This will store age-to-rate mappings, e.g., { '30': 1500, '31': 1600 }
+  ages: Record<string, number>;
+};
 
 export type Rider = {
     name: string;
     category: string;
     selected?: boolean;
     amount?: number;
-}
+};
 
 export type PremiumFormData = {
   userAge: number;
