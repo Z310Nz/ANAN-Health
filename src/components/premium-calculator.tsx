@@ -8,12 +8,14 @@ import { z } from 'zod';
 import type { PremiumFormData, PremiumCalculation } from '@/lib/types';
 import { getPremiumSummary } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 import { Card, CardContent } from '@/components/ui/card';
 import UserInfoStep from '@/components/steps/user-info-step';
 import CoverageStep from '@/components/steps/coverage-step';
 import ReviewStep from '@/components/steps/review-step';
 import SummaryStep from '@/components/steps/summary-step';
+import { ArrowLeft } from 'lucide-react';
 
 const SESSION_STORAGE_KEY = 'anan-health-calculator-session';
 
@@ -37,7 +39,11 @@ const FormSchema = z.object({
   riders: z.array(riderSchema).optional(),
 });
 
-export default function PremiumCalculator() {
+type PremiumCalculatorProps = {
+  onBackToWelcome: () => void;
+};
+
+export default function PremiumCalculator({ onBackToWelcome }: PremiumCalculatorProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [calculation, setCalculation] = useState<PremiumCalculation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -140,11 +146,17 @@ export default function PremiumCalculator() {
   }
 
   return (
-    <Card className="w-full max-w-4xl shadow-lg border-none rounded-t-3xl mt-[-2.5rem] bg-white pt-8">
-      <CardContent className="p-4 sm:p-8">
+    <Card className="w-full max-w-4xl shadow-lg border-none rounded-t-3xl mt-[-2.5rem] bg-white pt-2">
+       <CardContent className="p-4 sm:p-8 relative">
+        {currentStep === 0 && (
+           <Button variant="ghost" size="sm" onClick={onBackToWelcome} className="absolute top-4 left-4 text-muted-foreground">
+             <ArrowLeft className="h-4 w-4 mr-2" />
+             กลับ
+           </Button>
+        )}
         <FormProvider {...methods}>
           <form onSubmit={methods.handleSubmit(handleCalculate)}>
-            <div className="animate-fade-in">{renderStep()}</div>
+            <div className="animate-fade-in mt-8">{renderStep()}</div>
           </form>
         </FormProvider>
       </CardContent>
