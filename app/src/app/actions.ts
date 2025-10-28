@@ -1,6 +1,5 @@
 'use server';
 
-import { calculatePremiumSummary, type PremiumCalculationInput } from "@/ai/flows/premium-calculation-preview";
 import type { PremiumFormData, PremiumCalculation, YearlyPremium, Policy } from "@/lib/types";
 
 const MALE_POLICIES: Policy[] = [
@@ -87,24 +86,17 @@ export async function getPremiumSummary(
   formData: PremiumFormData
 ): Promise<PremiumCalculation> {
   try {
-    const totalPolicyAmount = formData.policies?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
-    
-    const ridersList = formData.riders?.filter(r => r.selected).map(r => r.name) || [];
-
-    const input: PremiumCalculationInput = {
-      coverageAmount: totalPolicyAmount,
-      coveragePeriod: formData.coveragePeriod,
-      userAge: formData.userAge,
-      riders: ridersList,
-    };
-
-    const aiResult = await calculatePremiumSummary(input);
-
     const { yearlyBreakdown, chartData } = generateMockBreakdown(formData);
     
+    // Mock AI result since the flow was removed
+    const mockAiResult = {
+      summary: `This is a sample premium calculation summary for a ${formData.userAge}-year-old ${formData.gender}.`,
+      note: formData.userAge > 60 ? 'Note: Premiums may be higher for users over 60.' : undefined,
+    };
+    
     return {
-      summary: aiResult.summary,
-      note: aiResult.note,
+      summary: mockAiResult.summary,
+      note: mockAiResult.note,
       yearlyBreakdown,
       chartData,
     };
