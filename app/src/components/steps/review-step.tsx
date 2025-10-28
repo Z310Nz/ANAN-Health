@@ -8,15 +8,22 @@ import type { PremiumFormData, Policy } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { getPoliciesForGender } from '@/app/actions';
 
-
 type ReviewStepProps = {
   onBack: () => void;
   isLoading: boolean;
 };
 
+const currencyFormatter = new Intl.NumberFormat('th-TH', {
+  style: 'currency',
+  currency: 'THB',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+
 export default function ReviewStep({ onBack, isLoading }: ReviewStepProps) {
   const { getValues } = useFormContext<PremiumFormData>();
-  const { policies: selectedPolicyIds, riders, gender } = getValues();
+  const { policies: selectedPolicyInputs, riders, gender } = getValues();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [loadingPolicies, setLoadingPolicies] = useState(true);
 
@@ -32,46 +39,52 @@ export default function ReviewStep({ onBack, isLoading }: ReviewStepProps) {
 
 
   const getPolicyName = (id: string) => {
-    if (loadingPolicies) return 'Loading...';
+    if (loadingPolicies) return 'กำลังโหลด...';
     return policies?.find(p => p.id === id)?.name || id;
   }
 
-  const selectedPolicies = selectedPolicyIds?.filter(p => p.policy);
-  const selectedRiders = riders?.filter(r => r.selected);
+  const selectedPolicies = selectedPolicyInputs?.filter(p => p.policy && p.amount);
+  const selectedRiders = riders?.filter(r => r.selected && r.amount);
 
   return (
     <Card className="border-0 shadow-none">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-headline">สรุปเบี้ยประกัน</CardTitle>
+        <CardTitle className="text-2xl font-headline">ตรวจสอบข้อมูล</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6 max-w-lg mx-auto">
         <div>
-          <h3 className="font-semibold mb-2">กรมธรรม์หลัก</h3>
-          <div className="space-y-2">
+          <h3 className="font-semibold mb-2 text-lg">กรมธรรม์หลัก</h3>
+          <div className="space-y-2 rounded-lg border p-4">
             {selectedPolicies && selectedPolicies.length > 0 ? (
                 selectedPolicies.map((p, i) => (
-                    <div key={i} className="bg-gray-100 rounded-md p-3 text-gray-700">
-                        {getPolicyName(p.policy!) || p.policy}
+                    <div key={i} className="flex justify-between items-center text-gray-800">
+                        <span>{getPolicyName(p.policy!)}</span>
+                        <span className="font-semibold">{p.amount ? currencyFormatter.format(p.amount) : ''}</span>
                     </div>
                 ))
             ) : (
-                <p className="text-muted-foreground">ไม่ได้เลือกกรมธรรม์หลัก</p>
+                <p className="text-muted-foreground text-center">ไม่ได้เลือกกรมธรรม์หลัก</p>
             )}
           </div>
         </div>
 
         <div>
-          <h3 className="font-semibold mb-2">อนุสัญญา</h3>
-          <div className="bg-gray-100 rounded-md p-3 space-y-2">
+          <h3 className="font-semibold mb-2 text-lg">อนุสัญญา (Riders)</h3>
+          <div className="space-y-2 rounded-lg border p-4">
             {selectedRiders && selectedRiders.length > 0 ? (
-                selectedRiders.map((r, i) => <div key={i} className="text-gray-700">{r.name}</div>)
+                selectedRiders.map((r, i) => (
+                  <div key={i} className="flex justify-between items-center text-gray-800">
+                    <span>{r.name}</span>
+                    <span className="font-semibold">{r.amount ? currencyFormatter.format(r.amount) : ''}</span>
+                  </div>
+                ))
             ) : (
-                <p className="text-muted-foreground">ไม่ได้เลือกอนุสัญญา</p>
+                <p className="text-muted-foreground text-center">ไม่ได้เลือกอนุสัญญา</p>
             )}
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between max-w-lg mx-auto">
+      <CardFooter className="flex justify-between max-w-lg mx-auto mt-6">
         <Button type="button" variant="outline" onClick={onBack} disabled={isLoading} className="rounded-full px-10">
           ย้อนกลับ
         </Button>
@@ -82,7 +95,7 @@ export default function ReviewStep({ onBack, isLoading }: ReviewStepProps) {
               กำลังคำนวณ...
             </>
           ) : (
-            'ยืนยัน'
+            'คำนวณเบี้ย'
           )}
         </Button>
       </CardFooter>

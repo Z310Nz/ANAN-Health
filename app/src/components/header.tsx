@@ -9,8 +9,6 @@ export default function AppHeader() {
           ANAN Health
         </span>
       </div>
-      <div className="ml-auto flex items-center gap-4">
-      </div>
     </header>
   );
 }

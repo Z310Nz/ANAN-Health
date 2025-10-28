@@ -37,7 +37,6 @@ async function getPolicies(gender: 'male' | 'female'): Promise<Policy[]> {
   return FEMALE_POLICIES;
 }
 
-
 // Mock data generation for chart and table
 function generateMockBreakdown(formData: PremiumFormData): { yearlyBreakdown: YearlyPremium[], chartData: PremiumCalculation['chartData'] } {
   const yearlyBreakdown: YearlyPremium[] = [];
@@ -69,6 +68,7 @@ function generateMockBreakdown(formData: PremiumFormData): { yearlyBreakdown: Ye
       total: Math.round(total),
     });
     
+    // Create fewer data points for the chart for better readability
     if (formData.coveragePeriod <= 15 || i % Math.floor(formData.coveragePeriod / 15) === 0 || i === 1 || i === formData.coveragePeriod) {
        chartData.push({
         year: `Year ${i}`,
@@ -85,11 +85,15 @@ function generateMockBreakdown(formData: PremiumFormData): { yearlyBreakdown: Ye
 export async function getPremiumSummary(
   formData: PremiumFormData
 ): Promise<PremiumCalculation> {
+  // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
   try {
     const { yearlyBreakdown, chartData } = generateMockBreakdown(formData);
     
+    // Mock AI summary
     const mockAiResult = {
-      summary: `This is a sample premium calculation summary for a ${formData.userAge}-year-old ${formData.gender}. The calculation is based on a total policy amount and selected riders.`,
+      summary: `This is a sample premium calculation summary for a ${formData.userAge}-year-old ${formData.gender}. The calculation is based on a total policy amount and selected riders over a ${formData.coveragePeriod}-year period.`,
       note: formData.userAge > 60 ? 'Note: Premiums may be higher for users over 60.' : undefined,
     };
     

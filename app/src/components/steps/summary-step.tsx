@@ -1,12 +1,12 @@
 'use client';
 
 import type { PremiumCalculation } from '@/lib/types';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis, Legend, ResponsiveContainer } from 'recharts';
 import { FileDown, RefreshCw, Info } from 'lucide-react';
 
 type SummaryStepProps = {
@@ -17,18 +17,18 @@ type SummaryStepProps = {
 
 const chartConfig = {
   Base: {
-    label: "Base Premium",
+    label: "เบี้ยประกันหลัก",
     color: "hsl(var(--chart-1))",
   },
   Riders: {
-    label: "Riders",
+    label: "เบี้ยอนุสัญญา",
     color: "hsl(var(--chart-2))",
   },
 } satisfies ChartConfig;
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
+const currencyFormatter = new Intl.NumberFormat('th-TH', {
   style: 'currency',
-  currency: 'USD',
+  currency: 'THB',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
@@ -38,14 +38,14 @@ export default function SummaryStep({ calculation, onStartOver, onExport }: Summ
     <div className="space-y-8">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-headline">Your Premium Preview</CardTitle>
+          <CardTitle className="text-2xl font-headline">สรุปผลการคำนวณเบี้ยประกัน</CardTitle>
           <CardDescription>{calculation.summary}</CardDescription>
         </CardHeader>
         {calculation.note && (
           <CardContent>
             <Alert>
               <Info className="h-4 w-4" />
-              <AlertTitle>Important Note</AlertTitle>
+              <AlertTitle>หมายเหตุสำคัญ</AlertTitle>
               <AlertDescription>{calculation.note}</AlertDescription>
             </Alert>
           </CardContent>
@@ -54,14 +54,13 @@ export default function SummaryStep({ calculation, onStartOver, onExport }: Summ
 
       <Card>
         <CardHeader>
-          <CardTitle>Premium Over Time</CardTitle>
-          <CardDescription>This chart shows the breakdown of your estimated annual premium.</CardDescription>
+          <CardTitle>เบี้ยประกันรายปี</CardTitle>
+          <CardDescription>กราฟแสดงส่วนประกอบของเบี้ยประกันโดยประมาณในแต่ละปี</CardDescription>
         </CardHeader>
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[250px] w-full">
             <ResponsiveContainer>
-              <LineChart data={calculation.chartData} accessibilityLayer>
-                <CartesianGrid vertical={false} />
+              <BarChart data={calculation.chartData} accessibilityLayer>
                 <XAxis
                   dataKey="year"
                   tickLine={false}
@@ -69,7 +68,7 @@ export default function SummaryStep({ calculation, onStartOver, onExport }: Summ
                   axisLine={false}
                 />
                 <YAxis
-                  tickFormatter={(value) => currencyFormatter.format(value as number)}
+                  tickFormatter={(value) => currencyFormatter.format(value as number).replace('฿','')}
                 />
                 <ChartTooltip
                   cursor={false}
@@ -79,9 +78,9 @@ export default function SummaryStep({ calculation, onStartOver, onExport }: Summ
                   />}
                 />
                 <Legend />
-                <Line type="monotone" dataKey="Base" stroke="var(--color-Base)" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="Riders" stroke="var(--color-Riders)" strokeWidth={2} dot={false}/>
-              </LineChart>
+                <Bar dataKey="Base" stackId="a" fill="var(--color-Base)" radius={[0, 0, 4, 4]} />
+                <Bar dataKey="Riders" stackId="a" fill="var(--color-Riders)" radius={[4, 4, 0, 0]}/>
+              </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
         </CardContent>
@@ -89,18 +88,18 @@ export default function SummaryStep({ calculation, onStartOver, onExport }: Summ
 
       <Card>
         <CardHeader>
-          <CardTitle>Yearly Breakdown</CardTitle>
-          <CardDescription>A detailed look at your premium each year.</CardDescription>
+          <CardTitle>ตารางเบี้ยประกันรายปี</CardTitle>
+          <CardDescription>รายละเอียดเบี้ยประกันของคุณในแต่ละปี</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="max-h-96 overflow-auto">
           <Table>
             <TableHeader className="sticky top-0 bg-background">
               <TableRow>
-                <TableHead className="w-[100px]">Year</TableHead>
-                <TableHead>Base Premium</TableHead>
-                <TableHead>Riders</TableHead>
-                <TableHead className="text-right">Total Annual</TableHead>
+                <TableHead className="w-[100px]">ปีที่</TableHead>
+                <TableHead>เบี้ยประกันหลัก</TableHead>
+                <TableHead>เบี้ยอนุสัญญา</TableHead>
+                <TableHead className="text-right">เบี้ยรวมรายปี</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -119,13 +118,13 @@ export default function SummaryStep({ calculation, onStartOver, onExport }: Summ
       </Card>
 
       <div className="flex flex-col sm:flex-row justify-end gap-4">
-        <Button onClick={onStartOver} variant="outline">
+        <Button onClick={onStartOver} variant="outline" className="rounded-full">
           <RefreshCw className="mr-2 h-4 w-4" />
-          Start Over
+          คำนวณใหม่
         </Button>
-        <Button onClick={onExport}>
+        <Button onClick={onExport} className="rounded-full">
           <FileDown className="mr-2 h-4 w-4" />
-          Export as CSV
+          ส่งออกเป็น CSV
         </Button>
       </div>
     </div>

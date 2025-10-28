@@ -1,19 +1,14 @@
 export type Policy = {
   id: string;
   name: string;
-  segment?: string;
-  segment_Code?: string;
-  Budget?: string;
-  Condition?: string;
-  ages?: Record<string, number>;
-}
+};
 
 export type Rider = {
     name: string;
     category: string;
     selected?: boolean;
     amount?: number;
-}
+};
 
 export type PremiumFormData = {
   userAge: number;
