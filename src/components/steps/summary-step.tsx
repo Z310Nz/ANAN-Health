@@ -6,13 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { FileDown, RefreshCw, Info } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from 'recharts';
+import { RefreshCw, Info } from 'lucide-react';
 
 type SummaryStepProps = {
   calculation: PremiumCalculation;
   onStartOver: () => void;
-  onExport: () => void;
 };
 
 const chartConfig = {
@@ -26,14 +25,14 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
+const currencyFormatter = new Intl.NumberFormat('th-TH', {
   style: 'currency',
-  currency: 'USD',
+  currency: 'THB',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
 
-export default function SummaryStep({ calculation, onStartOver, onExport }: SummaryStepProps) {
+export default function SummaryStep({ calculation, onStartOver }: SummaryStepProps) {
   return (
     <div className="space-y-8">
       <Card>
@@ -62,15 +61,8 @@ export default function SummaryStep({ calculation, onStartOver, onExport }: Summ
             <ResponsiveContainer>
               <LineChart data={calculation.chartData} accessibilityLayer>
                 <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="year"
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
-                />
-                <YAxis
-                  tickFormatter={(value) => currencyFormatter.format(value as number)}
-                />
+                <XAxis dataKey="year" tickLine={false} tickMargin={10} axisLine={false} />
+                <YAxis tickFormatter={(value) => currencyFormatter.format(value as number)} />
                 <ChartTooltip
                   cursor={false}
                   content={<ChartTooltipContent
@@ -94,26 +86,26 @@ export default function SummaryStep({ calculation, onStartOver, onExport }: Summ
         </CardHeader>
         <CardContent>
           <div className="max-h-96 overflow-auto">
-          <Table>
-            <TableHeader className="sticky top-0 bg-background">
-              <TableRow>
-                <TableHead className="w-[100px]">Year</TableHead>
-                <TableHead>Base Premium</TableHead>
-                <TableHead>Riders</TableHead>
-                <TableHead className="text-right">Total Annual</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {calculation.yearlyBreakdown.map((item) => (
-                <TableRow key={item.year}>
-                  <TableCell className="font-medium">{item.year}</TableCell>
-                  <TableCell>{currencyFormatter.format(item.base)}</TableCell>
-                  <TableCell>{currencyFormatter.format(item.riders)}</TableCell>
-                  <TableCell className="text-right font-bold">{currencyFormatter.format(item.total)}</TableCell>
+            <Table>
+              <TableHeader className="sticky top-0 bg-background">
+                <TableRow>
+                  <TableHead className="w-[100px]">Year</TableHead>
+                  <TableHead>Base Premium</TableHead>
+                  <TableHead>Riders</TableHead>
+                  <TableHead className="text-right">Total Annual</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {calculation.yearlyBreakdown.map((item) => (
+                  <TableRow key={item.year}>
+                    <TableCell className="font-medium">{item.year}</TableCell>
+                    <TableCell>{currencyFormatter.format(item.base)}</TableCell>
+                    <TableCell>{currencyFormatter.format(item.riders)}</TableCell>
+                    <TableCell className="text-right font-bold">{currencyFormatter.format(item.total)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
@@ -122,10 +114,6 @@ export default function SummaryStep({ calculation, onStartOver, onExport }: Summ
         <Button onClick={onStartOver} variant="outline">
           <RefreshCw className="mr-2 h-4 w-4" />
           Start Over
-        </Button>
-        <Button onClick={onExport}>
-          <FileDown className="mr-2 h-4 w-4" />
-          Export as CSV
         </Button>
       </div>
     </div>

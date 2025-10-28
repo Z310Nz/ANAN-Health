@@ -1,11 +1,6 @@
 export type Policy = {
   id: string;
   name: string;
-  segment?: string;
-  segment_Code?: string;
-  Budget?: string;
-  Condition?: string;
-  ages?: Record<string, number>;
 }
 
 export type Rider = {

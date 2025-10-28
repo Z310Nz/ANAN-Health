@@ -7,11 +7,9 @@ import { z } from 'zod';
 
 import type { PremiumFormData, PremiumCalculation } from '@/lib/types';
 import { getPremiumSummary } from '@/app/actions';
-import { exportToCsv } from '@/lib/csv';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { StepperIndicator } from '@/components/stepper-indicator';
 import UserInfoStep from '@/components/steps/user-info-step';
 import CoverageStep from '@/components/steps/coverage-step';
 import ReviewStep from '@/components/steps/review-step';
@@ -39,8 +37,6 @@ const FormSchema = z.object({
   riders: z.array(riderSchema).optional(),
 });
 
-const steps = ["ข้อมูลส่วนตัว", "เลือกกรมธรรม์", "สรุปเบี้ยประกัน", "สรุป"];
-
 export default function PremiumCalculator() {
   const [currentStep, setCurrentStep] = useState(0);
   const [calculation, setCalculation] = useState<PremiumCalculation | null>(null);
@@ -57,24 +53,10 @@ export default function PremiumCalculator() {
       riders: [
         { name: 'Infinite Care (new standard)', category: 'ค่ารักษา', selected: false, amount: undefined },
         { name: 'Health Happy', category: 'ค่ารักษา', selected: false, amount: undefined },
-        { name: 'Health Happy Kids DD10K', category: 'ค่ารักษา', selected: false, amount: undefined },
-        { name: 'Health Happy Kids DD30K', category: 'ค่ารักษา', selected: false, amount: undefined },
         { name: 'Health Saver', category: 'ค่ารักษา', selected: false, amount: undefined },
-        { name: 'H&S Extra (new standard)', category: 'ค่ารักษา', selected: false, amount: undefined },
-        { name: 'H&S (new standard)', category: 'ค่ารักษา', selected: false, amount: undefined },
-        { name: 'Infinite Care (new standard) DD 100K', category: 'ค่ารักษา', selected: false, amount: undefined },
-        { name: 'Infinite Care (new standard) DD 300K', category: 'ค่ารักษา', selected: false, amount: undefined },
         { name: 'HB', category: 'ชดเชยรายวัน', selected: false, amount: undefined },
-        { name: 'HB Extra', category: 'ชดเชยรายวัน', selected: false, amount: undefined },
-        { name: 'Care for Cancer', category: 'ชดเชยโรคร้ายแรง', selected: false, amount: undefined },
-        { name: 'Health Cancer', category: 'ชดเชยโรคร้ายแรง', selected: false, amount: undefined },
-        { name: 'Multi-Pay CI Plus + Total care', category: 'ชดเชยโรคร้ายแรง', selected: false, amount: undefined },
         { name: 'CI Plus', category: 'ชดเชยโรคร้ายแรง', selected: false, amount: undefined },
-        { name: 'CI Top Up', category: 'ชดเชยโรคร้ายแรง', selected: false, amount: undefined },
-        { name: 'TPD', category: 'ชดเชยโรคร้ายแรง', selected: false, amount: undefined },
         { name: 'AI/RCC', category: 'ชดเชยอุบัติเหตุ', selected: false, amount: undefined },
-        { name: 'ADD/RCC', category: 'ชดเชยอุบัติเหตุ', selected: false, amount: undefined },
-        { name: 'ADB/RCC', category: 'ชดเชยอุบัติเหตุ', selected: false, amount: undefined },
       ],
     },
   });
@@ -85,12 +67,8 @@ export default function PremiumCalculator() {
       if (savedSession) {
         const { formData, result, step } = JSON.parse(savedSession);
         methods.reset(formData);
-        if (result) {
-          setCalculation(result);
-        }
-        if (step) {
-          setCurrentStep(step);
-        }
+        if (result) setCalculation(result);
+        if (step) setCurrentStep(step);
       }
     } catch (e) {
       console.error("Could not load session", e);
@@ -101,36 +79,27 @@ export default function PremiumCalculator() {
 
   useEffect(() => {
     try {
-        const session = {
-            formData: watchedData,
-            result: calculation,
-            step: currentStep,
-        };
-        sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+      const session = {
+          formData: watchedData,
+          result: calculation,
+          step: currentStep,
+      };
+      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
     } catch (e) {
-        console.error("Could not save session", e);
+      console.error("Could not save session", e);
     }
   }, [watchedData, calculation, currentStep]);
 
 
   const handleNext = async () => {
-    let fieldsToValidate: (keyof PremiumFormData)[] = [];
-    if (currentStep === 0) {
-      fieldsToValidate = ['userAge', 'gender', 'coveragePeriod'];
-    } else if (currentStep === 1) {
-      fieldsToValidate = ['policies', 'riders'];
-    }
+    const fieldsToValidate: (keyof PremiumFormData)[] = 
+      currentStep === 0 ? ['userAge', 'gender', 'coveragePeriod'] : ['policies', 'riders'];
     
     const isValid = await methods.trigger(fieldsToValidate);
-
-    if (isValid) {
-      setCurrentStep((prev) => prev + 1);
-    }
+    if (isValid) setCurrentStep((prev) => prev + 1);
   };
 
-  const handleBack = () => {
-    setCurrentStep((prev) => prev - 1);
-  };
+  const handleBack = () => setCurrentStep((prev) => prev - 1);
   
   const handleCalculate = async (data: PremiumFormData) => {
     setIsLoading(true);
@@ -157,58 +126,25 @@ export default function PremiumCalculator() {
   };
   
   const handleClear = () => {
-    methods.reset({
-      ...methods.getValues(),
-      userAge: 30,
-      gender: undefined,
-      coveragePeriod: 20,
-    });
+    methods.reset({ ...methods.getValues(), userAge: 30, gender: undefined, coveragePeriod: 20 });
   }
 
-
-  const handleExport = () => {
-    if (calculation) {
-      const headers = ["Year", "Base Premium", "Riders Premium", "Total Premium"];
-      const data = calculation.yearlyBreakdown.map(y => [y.year, y.base, y.riders, y.total]);
-      exportToCsv("premium_breakdown.csv", headers, data);
-    }
-  };
-  
   const renderStep = () => {
     switch (currentStep) {
-        case 0:
-            return <UserInfoStep onNext={handleNext} onClear={handleClear} />;
-        case 1:
-            return <CoverageStep onBack={handleBack} onNext={handleNext} />;
-        case 2:
-            return <ReviewStep onBack={handleBack} isLoading={isLoading} />;
-        case 3:
-            if (calculation) {
-                return (
-                    <SummaryStep
-                        calculation={calculation}
-                        onStartOver={handleStartOver}
-                        onExport={handleExport}
-                    />
-                );
-            }
-            return null; // Or some loading/error state
-        default:
-            return null;
+      case 0: return <UserInfoStep onNext={handleNext} onClear={handleClear} />;
+      case 1: return <CoverageStep onBack={handleBack} onNext={handleNext} />;
+      case 2: return <ReviewStep onBack={handleBack} isLoading={isLoading} />;
+      case 3: return calculation ? <SummaryStep calculation={calculation} onStartOver={handleStartOver} /> : null;
+      default: return null;
     }
   }
 
   return (
     <Card className="w-full max-w-4xl shadow-lg border-none rounded-t-3xl mt-[-2.5rem] bg-white pt-8">
       <CardContent className="p-4 sm:p-8">
-        <div className="mb-8 hidden">
-          <StepperIndicator steps={steps} currentStep={currentStep} />
-        </div>
         <FormProvider {...methods}>
           <form onSubmit={methods.handleSubmit(handleCalculate)}>
-            <div className="animate-fade-in">
-              {renderStep()}
-            </div>
+            <div className="animate-fade-in">{renderStep()}</div>
           </form>
         </FormProvider>
       </CardContent>

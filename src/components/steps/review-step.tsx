@@ -5,9 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import type { PremiumFormData, Policy } from '@/lib/types';
-import { useEffect, useState } from 'react';
 import { getPoliciesForGender } from '@/app/actions';
-
+import { useEffect, useState } from 'react';
 
 type ReviewStepProps = {
   onBack: () => void;
@@ -30,9 +29,9 @@ export default function ReviewStep({ onBack, isLoading }: ReviewStepProps) {
     }
   }, [gender]);
 
-
-  const getPolicyName = (id: string) => {
+  const getPolicyName = (id: string | undefined) => {
     if (loadingPolicies) return 'Loading...';
+    if (!id) return '';
     return policies?.find(p => p.id === id)?.name || id;
   }
 
@@ -51,7 +50,7 @@ export default function ReviewStep({ onBack, isLoading }: ReviewStepProps) {
             {selectedPolicies && selectedPolicies.length > 0 ? (
                 selectedPolicies.map((p, i) => (
                     <div key={i} className="bg-gray-100 rounded-md p-3 text-gray-700">
-                        {getPolicyName(p.policy!) || p.policy}
+                        {getPolicyName(p.policy)}
                     </div>
                 ))
             ) : (
@@ -72,9 +71,7 @@ export default function ReviewStep({ onBack, isLoading }: ReviewStepProps) {
         </div>
       </CardContent>
       <CardFooter className="flex justify-between max-w-lg mx-auto">
-        <Button type="button" variant="outline" onClick={onBack} disabled={isLoading} className="rounded-full px-10">
-          ย้อนกลับ
-        </Button>
+        <Button type="button" variant="outline" onClick={onBack} disabled={isLoading} className="rounded-full px-10">ย้อนกลับ</Button>
         <Button type="submit" disabled={isLoading} className="bg-teal-500 hover:bg-teal-600 rounded-full px-10">
           {isLoading ? (
             <>

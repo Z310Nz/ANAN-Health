@@ -11,55 +11,39 @@ const MALE_POLICIES: Policy[] = [
   { id: 'CIPC', name: 'AIA CI ProCare' },
   { id: 'AnnFix', name: 'AIA Annuity FIX' },
   { id: 'AnnSure60', name: 'AIA Annuity Sure 60' },
-  { id: 'AnnSure9', name: 'AIA Annuity Sure 9' },
-  { id: '10PLP', name: 'AIA Pay Life Plus (Non Par) 10' },
-  { id: '15PLP', name: 'AIA Pay Life Plus (Non Par) 15' },
-  { id: '20PLP', name: 'AIA Pay Life Plus (Non Par) 20' },
-  { id: '10PLN', name: 'AIA 10 Pay Life (Non Par)' },
-  { id: '15PLN', name: 'AIA 15 Pay Life (Non Par)' },
-  { id: 'SVS', name: 'AIA Saving Sure (Non Par)' },
-  { id: 'ALP10', name: 'AIA Legacy Prestige Plus 10' },
-  { id: 'ALP10(20plus)', name: 'AIA Legacy Prestige Plus 10 (20M+)' },
-  { id: 'ALP15', name: 'AIA Legacy Prestige Plus 15' },
-  { id: 'ALP15(20plus)', name: 'AIA Legacy Prestige Plus 15 (20M+)' },
-  { id: 'ALP20', name: 'AIA Legacy Prestige Plus 20' },
-  { id: 'ALP20(20plus)', name: 'AIA Legacy Prestige Plus 20 (20M+)' }
 ];
 
 const FEMALE_POLICIES: Policy[] = MALE_POLICIES; // Assuming they are the same for this mock
 
-async function getPolicies(gender: 'male' | 'female'): Promise<Policy[]> {
-  // This function now returns mock data.
+export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<Policy[]> {
   console.log(`Fetching policies for ${gender}`);
+  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
   if (gender === 'male') {
     return MALE_POLICIES;
   }
   return FEMALE_POLICIES;
 }
 
-
-// Mock data generation for chart and table
 function generateMockBreakdown(formData: PremiumFormData): { yearlyBreakdown: YearlyPremium[], chartData: PremiumCalculation['chartData'] } {
   const yearlyBreakdown: YearlyPremium[] = [];
   const chartData: PremiumCalculation['chartData'] = [];
   
-  const totalPolicyAmount = formData.policies?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+  const totalPolicyAmount = formData.policies?.reduce((sum, p) => sum + (p.amount || 0), 0) || 500000;
   
-  let baseYearlyPremium = totalPolicyAmount * (0.001 + (formData.userAge - 18) * 0.0001);
+  let baseYearlyPremium = totalPolicyAmount * (0.02 + (formData.userAge - 18) * 0.0005);
   
   if (formData.gender === 'female') {
-    baseYearlyPremium *= 0.95; // 5% discount for females
+    baseYearlyPremium *= 0.95;
   }
 
   const selectedRiders = formData.riders?.filter(r => r.selected) || [];
-  const ridersYearlyPremium = selectedRiders.reduce((sum, r) => sum + (r.amount || 0), 0);
-
+  const ridersYearlyPremium = selectedRiders.reduce((sum, r) => sum + ((r.amount || 1000) * 0.1), 0);
 
   for (let i = 1; i <= formData.coveragePeriod; i++) {
     const currentAge = formData.userAge + i - 1;
-    // Increase base premium slightly with age
-    const base = baseYearlyPremium * (1 + (currentAge - formData.userAge) * 0.02);
-    const ridersCost = ridersYearlyPremium * (1 + (currentAge - formData.userAge) * 0.01);
+    const ageFactor = 1 + (currentAge - formData.userAge) * 0.015;
+    const base = baseYearlyPremium * ageFactor;
+    const ridersCost = ridersYearlyPremium * ageFactor;
     const total = base + ridersCost;
     
     yearlyBreakdown.push({
@@ -69,7 +53,8 @@ function generateMockBreakdown(formData: PremiumFormData): { yearlyBreakdown: Ye
       total: Math.round(total),
     });
     
-    if (formData.coveragePeriod <= 15 || i % Math.floor(formData.coveragePeriod / 15) === 0 || i === 1 || i === formData.coveragePeriod) {
+    // For chart, sample ~15 points for better readability
+    if (formData.coveragePeriod <= 15 || i % Math.floor(formData.coveragePeriod / 15) === 1 || i === formData.coveragePeriod) {
        chartData.push({
         year: `Year ${i}`,
         Base: Math.round(base),
@@ -85,12 +70,15 @@ function generateMockBreakdown(formData: PremiumFormData): { yearlyBreakdown: Ye
 export async function getPremiumSummary(
   formData: PremiumFormData
 ): Promise<PremiumCalculation> {
+  console.log("Calculating premium with form data:", formData);
+  await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate AI processing time
+  
   try {
     const { yearlyBreakdown, chartData } = generateMockBreakdown(formData);
     
     const mockAiResult = {
-      summary: `This is a sample premium calculation summary for a ${formData.userAge}-year-old ${formData.gender}. The calculation is based on a total policy amount and selected riders.`,
-      note: formData.userAge > 60 ? 'Note: Premiums may be higher for users over 60.' : undefined,
+      summary: `นี่คือตัวอย่างสรุปเบี้ยประกันสำหรับเพศ ${formData.gender === 'male' ? 'ชาย' : 'หญิง'} อายุ ${formData.userAge} ปี การคำนวณนี้เป็นการประมาณการเบื้องต้นเท่านั้น`,
+      note: formData.userAge > 60 ? 'หมายเหตุ: เบี้ยประกันอาจสูงขึ้นสำหรับผู้ที่มีอายุเกิน 60 ปี เนื่องจากความเสี่ยงที่เพิ่มขึ้น' : undefined,
     };
     
     return {
@@ -101,10 +89,6 @@ export async function getPremiumSummary(
     };
   } catch (error) {
     console.error('Error in getPremiumSummary server action:', error);
-    throw new Error('Failed to calculate premium summary. Please try again later.');
+    throw new Error('ไม่สามารถคำนวณเบี้ยประกันได้ กรุณาลองใหม่อีกครั้ง');
   }
-}
-
-export async function getPoliciesForGender(gender: 'male' | 'female') {
-    return getPolicies(gender);
 }

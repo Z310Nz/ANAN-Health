@@ -5,7 +5,7 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState, useEffect } from 'react';
 
 type UserInfoStepProps = {
@@ -30,13 +30,12 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
     }
   }, [userAge, coveragePeriod, getValues]);
 
-
   const handleCoverageUntilAgeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputVal = e.target.value;
-    setCoverageUntilAgeDisplay(inputVal); // Update display immediately
+    setCoverageUntilAgeDisplay(inputVal);
 
     const coverageUntilAge = Number(inputVal);
-    const currentAge = getValues('userAge');
+    const currentAge = Number(getValues('userAge'));
 
     if (!isNaN(coverageUntilAge) && currentAge > 0 && coverageUntilAge > currentAge) {
       const newCoveragePeriod = coverageUntilAge - currentAge;
@@ -58,7 +57,6 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
           setValue('coveragePeriod', 0, { shouldValidate: true });
       }
   }
-
 
   return (
     <Card className="border-0 shadow-none">
@@ -94,7 +92,7 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
             <FormItem>
               <FormLabel>อายุปัจจุบัน (ปี)</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="กรุณาใส่อายุ" {...field} onChange={handleAgeChange} />
+                <Input type="number" placeholder="กรุณาใส่อายุ" {...field} value={field.value || ''} onChange={handleAgeChange} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -103,7 +101,7 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
         <FormField
             control={control}
             name="coveragePeriod"
-            render={({ field }) => ( 
+            render={() => ( 
               <FormItem>
                 <FormLabel>ความคุ้มครองจนถึงอายุ (ปี)</FormLabel>
                 <FormControl>
