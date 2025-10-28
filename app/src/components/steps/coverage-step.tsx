@@ -1,6 +1,6 @@
 'use client';
 
-import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,11 +20,6 @@ type CoverageStepProps = {
 
 export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
   const { control, getValues } = useFormContext();
-  
-  const { fields: riderFields } = useFieldArray({
-    control,
-    name: "riders",
-  });
   
   const riders: Rider[] = getValues('riders');
   const gender: 'male' | 'female' = getValues('gender');
@@ -87,7 +82,7 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                   render={({ field }) => (
                       <FormItem>
                       <FormControl>
-                          <Input type="number" placeholder="กรุณาใส่ตัวเลข" {...field} />
+                          <Input type="number" placeholder="กรุณาใส่ตัวเลข" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} />
                       </FormControl>
                       <FormMessage />
                       </FormItem>
@@ -155,7 +150,7 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormControl>
-                                                <Input type="number" placeholder="กรุณาใส่ตัวเลข" {...field} />
+                                                <Input type="number" placeholder="กรุณาใส่ตัวเลข" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
