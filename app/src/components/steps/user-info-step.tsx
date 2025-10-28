@@ -11,19 +11,15 @@ import { useState, useEffect } from 'react';
 type UserInfoStepProps = {
   onNext: () => void;
   onClear: () => void;
-  onBackToWelcome: () => void;
 };
 
-export default function UserInfoStep({ onNext, onClear, onBackToWelcome }: UserInfoStepProps) {
+export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
   const { control, watch, setValue, getValues } = useFormContext();
   const userAge = watch('userAge');
   const coveragePeriod = watch('coveragePeriod');
   
-  // This state will hold the value displayed in the "Coverage Until Age" input.
-  // It's derived from the form state but managed locally to provide a better UX.
   const [coverageUntilAgeDisplay, setCoverageUntilAgeDisplay] = useState('');
 
-  // Effect to initialize or update the display value when form values change from the outside
   useEffect(() => {
     const currentAge = getValues('userAge');
     const period = getValues('coveragePeriod');
@@ -127,7 +123,6 @@ export default function UserInfoStep({ onNext, onClear, onBackToWelcome }: UserI
           />
       </CardContent>
       <CardFooter className="flex flex-col gap-4 max-w-sm mx-auto pt-6">
-        <Button type="button" onClick={onBackToWelcome} variant="outline" className="w-full rounded-full">ย้อนกลับ</Button>
         <Button type="button" onClick={onNext} className="w-full bg-teal-500 hover:bg-teal-600 rounded-full">ยืนยัน</Button>
         <Button type="button" onClick={onClear} variant="ghost" className="w-full rounded-full text-muted-foreground">ล้างข้อมูล</Button>
       </CardFooter>
