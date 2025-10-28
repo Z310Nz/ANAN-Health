@@ -29,7 +29,7 @@ const MALE_POLICIES: Policy[] = [
 const FEMALE_POLICIES: Policy[] = MALE_POLICIES; // Assuming they are the same for this mock
 
 async function getPolicies(gender: 'male' | 'female'): Promise<Policy[]> {
-  // This function now returns mock data, simulating a direct fetch from a source like Google Sheets.
+  // This function now returns mock data.
   console.log(`Fetching policies for ${gender}`);
   if (gender === 'male') {
     return MALE_POLICIES;
@@ -88,9 +88,8 @@ export async function getPremiumSummary(
   try {
     const { yearlyBreakdown, chartData } = generateMockBreakdown(formData);
     
-    // Mock AI result since the flow was removed
     const mockAiResult = {
-      summary: `This is a sample premium calculation summary for a ${formData.userAge}-year-old ${formData.gender}.`,
+      summary: `This is a sample premium calculation summary for a ${formData.userAge}-year-old ${formData.gender}. The calculation is based on a total policy amount and selected riders.`,
       note: formData.userAge > 60 ? 'Note: Premiums may be higher for users over 60.' : undefined,
     };
     
@@ -102,7 +101,6 @@ export async function getPremiumSummary(
     };
   } catch (error) {
     console.error('Error in getPremiumSummary server action:', error);
-    // In a real app, you might want to log this error to a monitoring service
     throw new Error('Failed to calculate premium summary. Please try again later.');
   }
 }

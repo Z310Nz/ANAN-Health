@@ -1,9 +1,3 @@
-export type User = {
-  id: string;
-  displayName: string;
-  avatarUrl: string;
-};
-
 export type Policy = {
   id: string;
   name: string;
@@ -27,8 +21,6 @@ export type PremiumFormData = {
   coveragePeriod: number;
   policies?: { policy?: string, amount?: number }[];
   riders?: Rider[];
-  // The following are deprecated and will be removed
-  coverageAmount: number;
 };
 
 export type YearlyPremium = {

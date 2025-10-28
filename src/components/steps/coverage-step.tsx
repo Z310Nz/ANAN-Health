@@ -1,6 +1,6 @@
 'use client';
 
-import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import type { Rider, Policy } from '@/lib/types';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { getPoliciesForGender } from '@/app/actions';
+import { useState, useEffect } from 'react';
+
 
 type CoverageStepProps = {
   onBack: () => void;
@@ -20,23 +21,21 @@ type CoverageStepProps = {
 export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
   const { control, getValues } = useFormContext();
   
-  const { fields: riderFields } = useFieldArray({
-    control,
-    name: "riders",
-  });
-  
   const riders: Rider[] = getValues('riders');
   const gender: 'male' | 'female' = getValues('gender');
-
-  const firestore = useFirestore();
   
-  const policiesCollectionRef = useMemoFirebase(() => {
-    if (!firestore || !gender) return null;
-    const collectionName = gender === 'male' ? 'main-policies-male' : 'main-policies-female';
-    return collection(firestore, collectionName);
-  }, [firestore, gender]);
+  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [policiesLoading, setPoliciesLoading] = useState(true);
 
-  const { data: policies, isLoading: policiesLoading } = useCollection<Policy>(policiesCollectionRef);
+  useEffect(() => {
+    if (gender) {
+      setPoliciesLoading(true);
+      getPoliciesForGender(gender).then(data => {
+        setPolicies(data);
+        setPoliciesLoading(false);
+      });
+    }
+  }, [gender]);
 
 
   const riderCategories = {
@@ -83,7 +82,7 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                   render={({ field }) => (
                       <FormItem>
                       <FormControl>
-                          <Input type="number" placeholder="กรุณาใส่ตัวเลข" {...field} />
+                          <Input type="number" placeholder="กรุณาใส่ตัวเลข" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} />
                       </FormControl>
                       <FormMessage />
                       </FormItem>
@@ -151,7 +150,7 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormControl>
-                                                <Input type="number" placeholder="กรุณาใส่ตัวเลข" {...field} />
+                                                <Input type="number" placeholder="กรุณาใส่ตัวเลข" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>

@@ -42,7 +42,6 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
       const newCoveragePeriod = coverageUntilAge - currentAge;
       setValue('coveragePeriod', newCoveragePeriod, { shouldValidate: true });
     } else {
-      // If input is invalid or less than current age, set period to 0 or some other default
        setValue('coveragePeriod', 0, { shouldValidate: true });
     }
   };
@@ -51,7 +50,6 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
       const newAge = Number(e.target.value);
       setValue('userAge', newAge, { shouldValidate: true });
 
-      // After updating userAge, re-calculate coveragePeriod if coverageUntilAge is set
       const coverageUntilAge = Number(coverageUntilAgeDisplay);
       if (!isNaN(coverageUntilAge) && newAge > 0 && coverageUntilAge > newAge) {
           const newCoveragePeriod = coverageUntilAge - newAge;
@@ -116,7 +114,6 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
                     value={coverageUntilAgeDisplay}
                   />
                 </FormControl>
-                 {/* This message is for the hidden coveragePeriod field, but shown under the synthetic field */}
                 <FormMessage />
               </FormItem>
             )}

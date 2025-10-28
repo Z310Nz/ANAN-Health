@@ -41,11 +41,7 @@ const FormSchema = z.object({
 
 const steps = ["ข้อมูลส่วนตัว", "เลือกกรมธรรม์", "สรุปเบี้ยประกัน", "สรุป"];
 
-type PremiumCalculatorProps = {
-  onBackToWelcome: () => void;
-};
-
-export default function PremiumCalculator({ onBackToWelcome }: PremiumCalculatorProps) {
+export default function PremiumCalculator() {
   const [currentStep, setCurrentStep] = useState(0);
   const [calculation, setCalculation] = useState<PremiumCalculation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -181,7 +177,7 @@ export default function PremiumCalculator({ onBackToWelcome }: PremiumCalculator
   const renderStep = () => {
     switch (currentStep) {
         case 0:
-            return <UserInfoStep onNext={handleNext} onClear={handleClear} onBackToWelcome={onBackToWelcome} />;
+            return <UserInfoStep onNext={handleNext} onClear={handleClear} />;
         case 1:
             return <CoverageStep onBack={handleBack} onNext={handleNext} />;
         case 2:
