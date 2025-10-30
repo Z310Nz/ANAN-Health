@@ -17,14 +17,99 @@ type CoverageStepProps = {
   onNext: () => void;
 };
 
-const riderDropdownOptions: Record<string, string[]> = {
-  'Infinite Care (new standard)': ['แผน 1 ล้าน', 'แผน 5 ล้าน', 'แผน 10 ล้าน', 'แผน 30 ล้าน', 'แผน 60 ล้าน', 'แผน 100 ล้าน'],
-  'Health Happy': ['แผน 1 ล้าน', 'แผน 5 ล้าน', 'แผน 15 ล้าน', 'แผน 25 ล้าน'],
-  'Health Happy Kids DD10K': ['แผน 1 ล้าน', 'แผน 5 ล้าน'],
-  'Health Happy Kids DD30K': ['แผน 1 ล้าน', 'แผน 5 ล้าน'],
-  'Infinite Care (new standard) DD 100K': ['แผน 30 ล้าน', 'แผน 60 ล้าน', 'แผน 100 ล้าน'],
-  'Infinite Care (new standard) DD 300K': ['แผน 60 ล้าน', 'แผน 100 ล้าน'],
+type DropdownOption = { label: string; value: string };
+type RiderOptions = {
+    male: DropdownOption[];
+    female: DropdownOption[];
 };
+
+const riderDropdownOptions: Record<string, RiderOptions> = {
+  'Infinite Care (new standard)': {
+    male: [
+      { label: 'ช 60,000,000 ทั่วโลก', value: '60M WW' },
+      { label: 'ช 120,000,000 ทั่วโลก', value: '120M WW' },
+      { label: 'ช 60,000,000 ยกเว้นUSA', value: '60M xUS' },
+      { label: 'ช 120,000,000 ยกเว้นUSA', value: '120M xUS' },
+    ],
+    female: [
+      { label: 'ญ 60,000,000 ทั่วโลก', value: '60M WW' },
+      { label: 'ญ 120,000,000 ทั่วโลก', value: '120M WW' },
+      { label: 'ญ 60,000,000 ยกเว้นUSA', value: '60M xUS' },
+      { label: 'ญ 120,000,000 ยกเว้นUSA', value: '120M xUS' },
+    ],
+  },
+  'Health Happy': {
+    male: [
+      { label: 'HH 1,000,000', value: 'HHM1' },
+      { label: 'HH 5,000,000', value: 'HHM5' },
+      { label: 'HH 15,000,000', value: 'HHM15' },
+      { label: 'HH 25,000,000', value: 'HHM25' },
+    ],
+    female: [
+      { label: 'HH 1,000,000', value: 'HHF1' },
+      { label: 'HH 5,000,000', value: 'HHF5' },
+      { label: 'HH 15,000,000', value: 'HHF15' },
+      { label: 'HH 25,000,000', value: 'HHF25' },
+    ],
+  },
+  'Health Happy Kids DD10K': {
+    male: [
+      { label: 'HH 1,000,000', value: 'HHM10K1' },
+      { label: 'HH 5,000,000', value: 'HHM10K5' },
+      { label: 'HH 15,000,000', value: 'HHM10K15' },
+      { label: 'HH 25,000,000', value: 'HHM10K25' },
+    ],
+    female: [
+      { label: 'HH 1,000,000', value: 'HHF10K1' },
+      { label: 'HH 5,000,000', value: 'HHF10K5' },
+      { label: 'HH 15,000,000', value: 'HHF10K15' },
+      { label: 'HH 25,000,000', value: 'HHF10K25' },
+    ],
+  },
+  'Health Happy Kids DD30K': {
+    male: [
+      { label: 'HH 1,000,000', value: 'HHM30K1' },
+      { label: 'HH 5,000,000', value: 'HHM30K5' },
+      { label: 'HH 15,000,000', value: 'HHM30K15' },
+      { label: 'HH 25,000,000', value: 'HHM30K25' },
+    ],
+    female: [
+      { label: 'HH 1,000,000', value: 'HHF30K1' },
+      { label: 'HH 5,000,000', value: 'HHF30K5' },
+      { label: 'HH 15,000,000', value: 'HHF30K15' },
+      { label: 'HH 25,000,000', value: 'HHF30K25' },
+    ],
+  },
+  'Infinite Care (new standard) DD 100K': {
+    male: [
+        { label: 'ช 60,000,000 ทั่วโลก', value: 'ICDM10M60' },
+        { label: 'ช 120,000,000 ทั่วโลก', value: 'ICDM10M120' },
+        { label: 'ช 60,000,000 ยกเว้นUSA', value: 'ICDM10MxUS60' },
+        { label: 'ช 120,000,000 ยกเว้นUSA', value: 'ICDM10MxUS120' },
+    ],
+    female: [
+        { label: 'ญ 60,000,000 ทั่วโลก', value: 'ICDF10M60' },
+        { label: 'ญ 120,000,000 ทั่วโลก', value: 'ICDF10M120' },
+        { label: 'ญ 60,000,000 ยกเว้นUSA', value: 'ICDF10MxUS60' },
+        { label: 'ญ 120,000,000 ยกเว้นUSA', value: 'ICDF10MxUS120' },
+    ],
+  },
+    'Infinite Care (new standard) DD 300K': {
+    male: [
+        { label: 'ช 60,000,000 ทั่วโลก', value: 'ICDM30M60' },
+        { label: 'ช 120,000,000 ทั่วโลก', value: 'ICDM30M120' },
+        { label: 'ช 60,000,000 ยกเว้นUSA', value: 'ICDM30MxUS60' },
+        { label: 'ช 120,000,000 ยกเว้นUSA', value: 'ICDM30MxUS120' },
+    ],
+    female: [
+        { label: 'ญ 60,000,000 ทั่วโลก', value: 'ICDF30M60' },
+        { label: 'ญ 120,000,000 ทั่วโลก', value: 'ICDF30M120' },
+        { label: 'ญ 60,000,000 ยกเว้นUSA', value: 'ICDF30MxUS60' },
+        { label: 'ญ 120,000,000 ยกเว้นUSA', value: 'ICDF30MxUS120' },
+    ],
+  },
+};
+
 
 const hardcodedPolicies = [
     { id: "AIA20PL", name: "AIA 20 Pay Life (Non Par)" },
@@ -171,7 +256,7 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                                 <Select 
                                   onValueChange={field.onChange} 
                                   defaultValue={field.value} 
-                                  disabled={!riders[item.index]?.selected}
+                                  disabled={!riders[item.index]?.selected || !gender}
                                 >
                                   <FormControl>
                                     <SelectTrigger>
@@ -179,8 +264,8 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    {(riderDropdownOptions[item.name] || []).map(option => (
-                                      <SelectItem key={option} value={option}>{option}</SelectItem>
+                                    {(riderDropdownOptions[item.name]?.[gender] || []).map(option => (
+                                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
