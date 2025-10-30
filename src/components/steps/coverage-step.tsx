@@ -35,14 +35,18 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
   
   const { fields: policyFields } = useFieldArray({ control, name: "policies" });
   
-  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [policies, setPolicies] = useState<Omit<Policy, 'ages'>[]>([]);
   const [policiesLoading, setPoliciesLoading] = useState(true);
 
   useEffect(() => {
     if (gender) {
       setPoliciesLoading(true);
       getPoliciesForGender(gender).then(data => {
+        console.log('Policies received in component:', data);
         setPolicies(data);
+        setPoliciesLoading(false);
+      }).catch(error => {
+        console.error("Failed to get policies for gender:", error);
         setPoliciesLoading(false);
       });
     }

@@ -17,6 +17,7 @@ async function fetchAndParseSheet(baseUrl: string, sheetName: string): Promise<a
   }
   
   const sheetUrl = `${baseUrl.replace('/pub?', '/pubhtml?').replace('/pubhtml', '/export?format=csv&gid=')}${sheetId}`;
+  console.log('Fetching from URL:', sheetUrl);
 
   try {
     const response = await fetch(sheetUrl, { next: { revalidate: 3600 } }); // Revalidate every hour
@@ -24,6 +25,8 @@ async function fetchAndParseSheet(baseUrl: string, sheetName: string): Promise<a
       throw new Error(`Failed to fetch Google Sheet: ${response.statusText}`);
     }
     const text = await response.text();
+    console.log('Raw CSV data received:', text);
+    
     return new Promise((resolve, reject) => {
       Papa.parse(text, {
         header: true,
@@ -31,9 +34,11 @@ async function fetchAndParseSheet(baseUrl: string, sheetName: string): Promise<a
         skipEmptyLines: true,
         transformHeader: header => header.trim().replace(/\s+/g, '_'),
         complete: (results) => {
+          console.log('Parsed data:', results.data);
           resolve(results.data);
         },
         error: (error) => {
+          console.error('Papaparse error:', error);
           reject(error);
         },
       });
@@ -47,31 +52,40 @@ async function fetchAndParseSheet(baseUrl: string, sheetName: string): Promise<a
 // Helper function to find the GID of a sheet by its name from the published HTML
 async function getSheetId(baseUrl: string, sheetName: string): Promise<string | null> {
     const htmlUrl = baseUrl.replace('/pub?', '/pubhtml?');
+    let html: string | undefined;
     try {
         const response = await fetch(htmlUrl, { next: { revalidate: 3600 } });
         if (!response.ok) {
              // If we can't fetch the HTML to check, maybe the base sheet is '0'.
              // This is a fallback for when the pubhtml page is not available but the csv export might be.
-            return sheetName.toLowerCase() === 'main' ? '0' : null;
+            console.warn(`Could not fetch HTML to find GID. Response status: ${response.status}.`);
+            if (sheetName.toLowerCase() === 'main') {
+                console.log("Defaulting to GID '0' for 'Main' sheet as a fallback.");
+                return '0';
+            }
+            return null;
         }
-        const html = await response.text();
+        html = await response.text();
         const sheetMenu = html.match(/<ul id="sheet-menu">(.*?)<\/ul>/);
         if (sheetMenu) {
             const links = sheetMenu[1].matchAll(/<a href="#gid=(\d+?)">(.*?)<\/a>/g);
             for (const link of links) {
                 if (link[2].trim().toLowerCase() === sheetName.toLowerCase()) {
+                    console.log(`Found sheet "${sheetName}" with GID: ${link[1]}`);
                     return link[1]; // Found the sheet by name
                 }
             }
         }
 
-        // If we are here, it means we couldn't find the sheet by name.
+        // If we are here, it means we couldn't find the sheet by name in the menu.
         // Let's check if the sheetName is 'Main', maybe it's the very first sheet.
         if (sheetName.toLowerCase() === 'main') {
             const firstSheetGid = html.match(/<a href="#gid=(\d+?)"/);
             if (firstSheetGid) {
+                console.log(`Could not find "Main" by name, but found first sheet with GID: ${firstSheetGid[1]}. Using it as fallback.`);
                 return firstSheetGid[1];
             }
+            console.log("Could not find any sheets, defaulting to GID '0' for 'Main'.");
             return '0'; // Default to '0' if no sheets are found at all, it's the default for the first sheet.
         }
 
@@ -83,6 +97,7 @@ async function getSheetId(baseUrl: string, sheetName: string): Promise<string | 
         }
     }
     
+    console.warn(`Sheet with name "${sheetName}" not found.`);
     return null; // Return null if a specific sheet name (other than 'Main') is not found
 }
 
@@ -117,7 +132,9 @@ export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<O
   }
   
   const rawData = await fetchAndParseSheet(url, 'Main');
+  console.log('Raw data for policy transformation:', rawData);
   const policies = transformRawDataToPolicies(rawData);
+  console.log('Transformed policies for dropdown:', policies);
   // Return only id and name for the selection list
   return policies.map(({ id, name }) => ({ id, name, ages: {} }));
 }
