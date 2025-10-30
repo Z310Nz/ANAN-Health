@@ -77,6 +77,8 @@ export default function PremiumCalculator({ onBackToWelcome }: PremiumCalculator
         { name: 'CI Top Up', category: 'ชดเชยโรคร้ายแรง', type: 'input', selected: false, amount: undefined },
         { name: 'TPD', category: 'ชดเชยโรคร้ายแรง', type: 'input', selected: false, amount: undefined },
         { name: 'AI/RCC', category: 'ชดเชยอุบัติเหตุ', type: 'input', selected: false, amount: undefined },
+        { name: 'ADD/RCC', category: 'ชดเชยอุบัติเหตุ', type: 'input', selected: false, amount: undefined },
+        { name: 'ADB/RCC', category: 'ชดเชยอุบัติเหตุ', type: 'input', selected: false, amount: undefined },
       ],
     },
   });
