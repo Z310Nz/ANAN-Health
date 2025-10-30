@@ -8,8 +8,10 @@ export type Policy = {
 export type Rider = {
     name: string;
     category: string;
+    type: 'dropdown' | 'input';
     selected?: boolean;
     amount?: number;
+    dropdownValue?: string;
 };
 
 export type PremiumFormData = {

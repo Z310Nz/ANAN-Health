@@ -27,8 +27,10 @@ const policySchema = z.object({
 const riderSchema = z.object({
   name: z.string(),
   category: z.string(),
+  type: z.enum(['dropdown', 'input']),
   selected: z.boolean().optional(),
   amount: z.coerce.number().optional(),
+  dropdownValue: z.string().optional(),
 });
 
 const FormSchema = z.object({
@@ -57,12 +59,18 @@ export default function PremiumCalculator({ onBackToWelcome }: PremiumCalculator
       coveragePeriod: 20,
       policies: [{policy: undefined, amount: undefined}],
       riders: [
-        { name: 'Infinite Care (new standard)', category: 'ค่ารักษา', selected: false, amount: undefined },
-        { name: 'Health Happy', category: 'ค่ารักษา', selected: false, amount: undefined },
-        { name: 'Health Saver', category: 'ค่ารักษา', selected: false, amount: undefined },
-        { name: 'HB', category: 'ชดเชยรายวัน', selected: false, amount: undefined },
-        { name: 'CI Plus', category: 'ชดเชยโรคร้ายแรง', selected: false, amount: undefined },
-        { name: 'AI/RCC', category: 'ชดเชยอุบัติเหตุ', selected: false, amount: undefined },
+        { name: 'Infinite Care (new standard)', category: 'ค่ารักษา', type: 'dropdown', selected: false, amount: undefined },
+        { name: 'Health Happy', category: 'ค่ารักษา', type: 'dropdown', selected: false, amount: undefined },
+        { name: 'Health Happy Kids DD10K', category: 'ค่ารักษา', type: 'dropdown', selected: false, amount: undefined },
+        { name: 'Health Happy Kids DD30K', category: 'ค่ารักษา', type: 'dropdown', selected: false, amount: undefined },
+        { name: 'Health Saver', category: 'ค่ารักษา', type: 'input', selected: false, amount: undefined },
+        { name: 'H&S Extra (new standard)', category: 'ค่ารักษา', type: 'input', selected: false, amount: undefined },
+        { name: 'H&S (new standard)', category: 'ค่ารักษา', type: 'input', selected: false, amount: undefined },
+        { name: 'Infinite Care (new standard) DD 100K', category: 'ค่ารักษา', type: 'dropdown', selected: false, amount: undefined },
+        { name: 'Infinite Care (new standard) DD 300K', category: 'ค่ารักษา', type: 'dropdown', selected: false, amount: undefined },
+        { name: 'HB', category: 'ชดเชยรายวัน', type: 'input', selected: false, amount: undefined },
+        { name: 'CI Plus', category: 'ชดเชยโรคร้ายแรง', type: 'input', selected: false, amount: undefined },
+        { name: 'AI/RCC', category: 'ชดเชยอุบัติเหตุ', type: 'input', selected: false, amount: undefined },
       ],
     },
   });

@@ -49,8 +49,9 @@ export default function ReviewStep({ onBack, isLoading }: ReviewStepProps) {
           <div className="space-y-2">
             {selectedPolicies && selectedPolicies.length > 0 ? (
                 selectedPolicies.map((p, i) => (
-                    <div key={i} className="bg-gray-100 rounded-md p-3 text-gray-700">
-                        {getPolicyName(p.policy)}
+                    <div key={i} className="flex justify-between bg-gray-100 rounded-md p-3 text-gray-700">
+                        <span>{getPolicyName(p.policy)}</span>
+                        <span>{p.amount?.toLocaleString() || 'N/A'}</span>
                     </div>
                 ))
             ) : (
@@ -63,7 +64,12 @@ export default function ReviewStep({ onBack, isLoading }: ReviewStepProps) {
           <h3 className="font-semibold mb-2">อนุสัญญา</h3>
           <div className="bg-gray-100 rounded-md p-3 space-y-2">
             {selectedRiders && selectedRiders.length > 0 ? (
-                selectedRiders.map((r, i) => <div key={i} className="text-gray-700">{r.name}</div>)
+                selectedRiders.map((r, i) => (
+                  <div key={i} className="flex justify-between text-gray-700">
+                    <span>{r.name}</span>
+                    <span>{r.type === 'input' ? r.amount?.toLocaleString() : r.dropdownValue || 'N/A'}</span>
+                  </div>
+                ))
             ) : (
                 <p className="text-muted-foreground">ไม่ได้เลือกอนุสัญญา</p>
             )}

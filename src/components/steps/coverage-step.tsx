@@ -17,11 +17,21 @@ type CoverageStepProps = {
   onNext: () => void;
 };
 
+const riderDropdownOptions: Record<string, string[]> = {
+  'Infinite Care (new standard)': ['แผน 1 ล้าน', 'แผน 5 ล้าน', 'แผน 10 ล้าน', 'แผน 30 ล้าน', 'แผน 60 ล้าน', 'แผน 100 ล้าน'],
+  'Health Happy': ['แผน 1 ล้าน', 'แผน 5 ล้าน', 'แผน 15 ล้าน', 'แผน 25 ล้าน'],
+  'Health Happy Kids DD10K': ['แผน 1 ล้าน', 'แผน 5 ล้าน'],
+  'Health Happy Kids DD30K': ['แผน 1 ล้าน', 'แผน 5 ล้าน'],
+  'Infinite Care (new standard) DD 100K': ['แผน 30 ล้าน', 'แผน 60 ล้าน', 'แผน 100 ล้าน'],
+  'Infinite Care (new standard) DD 300K': ['แผน 60 ล้าน', 'แผน 100 ล้าน'],
+};
+
+
 export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
-  const { control, getValues } = useFormContext<PremiumFormData>();
+  const { control, getValues, watch } = useFormContext<PremiumFormData>();
   
   const gender = getValues('gender');
-  const riders = getValues('riders') || [];
+  const riders = watch('riders') || [];
   
   const { fields: policyFields } = useFieldArray({ control, name: "policies" });
   
@@ -118,18 +128,57 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                           )}
                         />
                         <span className="font-medium flex items-center h-10">{item.name}</span>
-                        <FormField
-                          control={control}
-                          name={`riders.${item.index}.amount`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input type="number" placeholder="กรุณาใส่ตัวเลข" {...field} value={field.value || ''} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        
+                        {item.type === 'input' && (
+                           <FormField
+                            control={control}
+                            name={`riders.${item.index}.amount`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    placeholder="กรุณาใส่ตัวเลข" 
+                                    {...field} 
+                                    value={field.value || ''} 
+                                    onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                                    disabled={!riders[item.index]?.selected}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+
+                        {item.type === 'dropdown' && (
+                          <FormField
+                            control={control}
+                            name={`riders.${item.index}.dropdownValue`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <Select 
+                                  onValueChange={field.onChange} 
+                                  defaultValue={field.value} 
+                                  disabled={!riders[item.index]?.selected}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="เลือกแผน" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {(riderDropdownOptions[item.name] || []).map(option => (
+                                      <SelectItem key={option} value={option}>{option}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+                        
                       </div>
                     ))}
                   </div>
