@@ -26,6 +26,27 @@ const riderDropdownOptions: Record<string, string[]> = {
   'Infinite Care (new standard) DD 300K': ['แผน 60 ล้าน', 'แผน 100 ล้าน'],
 };
 
+const hardcodedPolicies = [
+    { id: "AIA20PL", name: "AIA 20 Pay Life (Non Par)" },
+    { id: "AIAE1525", name: "AIA Endowment 15/25 (Non Par)" },
+    { id: "AIAEXC", name: "AIA Excellent (Non Par)" },
+    { id: "AIACISC1099", name: "AIA CI SuperCare 10/99" },
+    { id: "AIACISC2099", name: "AIA CI SuperCare 20/99" },
+    { id: "AIACIPC", name: "AIA CI ProCare" },
+    { id: "AIAAF", name: "AIA Annuity FIX" },
+    { id: "AIAAS60", name: "AIA Annuity Sure 60" },
+    { id: "AIAAS9", name: "AIA Annuity Sure 9" },
+    { id: "AIAPLPP10", name: "AIA Pay Life Plus (Non Par) 10" },
+    { id: "AIAPLPP15", name: "AIA Pay Life Plus (Non Par) 15" },
+    { id: "AIAPLPP20", name: "AIA Pay Life Plus (Non Par) 20" },
+    { id: "AIA10PL", name: "AIA 10 Pay Life (Non Par)" },
+    { id: "AIA15PL", name: "AIA 15 Pay Life (Non Par)" },
+    { id: "AIASS", name: "AIA Saving Sure (Non Par)" },
+    { id: "AIALPP10", name: "AIA Legacy Prestige Plus 10" },
+    { id: "AIALPP15", name: "AIA Legacy Prestige Plus 15" },
+    { id: "AIALPP20", name: "AIA Legacy Prestige Plus 20" },
+];
+
 
 export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
   const { control, getValues, watch } = useFormContext<PremiumFormData>();
@@ -35,22 +56,8 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
   
   const { fields: policyFields } = useFieldArray({ control, name: "policies" });
   
-  const [policies, setPolicies] = useState<Omit<Policy, 'ages'>[]>([]);
-  const [policiesLoading, setPoliciesLoading] = useState(true);
-
-  useEffect(() => {
-    if (gender) {
-      setPoliciesLoading(true);
-      getPoliciesForGender(gender).then(data => {
-        console.log('Policies received in component:', data);
-        setPolicies(data);
-        setPoliciesLoading(false);
-      }).catch(error => {
-        console.error("Failed to get policies for gender:", error);
-        setPoliciesLoading(false);
-      });
-    }
-  }, [gender]);
+  const policies = hardcodedPolicies;
+  const policiesLoading = false;
 
   const riderCategories = {
     'ค่ารักษา': riders.map((r, i) => ({...r, index: i})).filter(r => r.category === 'ค่ารักษา'),
