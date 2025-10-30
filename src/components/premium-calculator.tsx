@@ -90,6 +90,9 @@ export default function PremiumCalculator({ onBackToWelcome }: PremiumCalculator
         const { formData, result, step } = JSON.parse(savedSession);
         methods.reset(formData);
         if (result) setCalculation(result);
+        // Ensure we always start at step 0 if coming from welcome screen
+        // The handleStart in main-app clears sessionStorage, so this check works
+        // for subsequent re-renders within the calculator flow.
         if (step) setCurrentStep(step);
       }
     } catch (e) {
@@ -141,10 +144,7 @@ export default function PremiumCalculator({ onBackToWelcome }: PremiumCalculator
   };
 
   const handleStartOver = () => {
-    setCalculation(null);
-    methods.reset();
-    setCurrentStep(0);
-    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    onBackToWelcome();
   };
   
   const handleClear = () => {
