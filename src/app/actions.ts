@@ -12,20 +12,26 @@ async function fetchAndParseSheet(baseUrl: string, sheetName: string): Promise<a
   
   const sheetId = await getSheetId(baseUrl, sheetName);
   if (sheetId === null) {
-      console.error(`Could not find sheet with name "${sheetName}" in the published Google Sheet.`);
-      return [];
+      console.error(`Could not find sheet with name "${sheetName}" in the published Google Sheet. Falling back to default GID '0'. If this is not correct, please ensure the sheet name is accurate and the sheet is published.`);
+      // No return here, will proceed with sheetId = null which the next line handles.
   }
   
-  const sheetUrl = `${baseUrl.replace('/pub?', '/pubhtml?').replace('/pubhtml', '/export?format=csv&gid=')}${sheetId}`;
+  // Construct the correct export URL. The base URL from user is like /pubhtml. We need /export?format=csv&gid=...
+  const sheetUrl = `${baseUrl.replace('/pubhtml', '/export?format=csv')}&gid=${sheetId || '0'}`;
   console.log('Fetching from URL:', sheetUrl);
 
   try {
     const response = await fetch(sheetUrl, { next: { revalidate: 3600 } }); // Revalidate every hour
     if (!response.ok) {
-      throw new Error(`Failed to fetch Google Sheet: ${response.statusText}`);
+      throw new Error(`Failed to fetch Google Sheet: ${response.status} ${response.statusText}`);
     }
     const text = await response.text();
-    console.log('Raw CSV data received:', text);
+    // Check if the response is an HTML page (error) instead of CSV
+    if (text.trim().startsWith('<!DOCTYPE html>')) {
+        console.error('Received an HTML page instead of CSV. This often means the Google Sheet URL is incorrect, not published correctly, or the GID is wrong.');
+        return [];
+    }
+    console.log('Raw CSV data received:', text.substring(0, 500) + '...'); // Log first 500 chars
     
     return new Promise((resolve, reject) => {
       Papa.parse(text, {
@@ -34,6 +40,9 @@ async function fetchAndParseSheet(baseUrl: string, sheetName: string): Promise<a
         skipEmptyLines: true,
         transformHeader: header => header.trim().replace(/\s+/g, '_'),
         complete: (results) => {
+          if (results.errors.length > 0) {
+            console.error('Papaparse errors:', results.errors);
+          }
           console.log('Parsed data:', results.data);
           resolve(results.data);
         },
@@ -52,53 +61,40 @@ async function fetchAndParseSheet(baseUrl: string, sheetName: string): Promise<a
 // Helper function to find the GID of a sheet by its name from the published HTML
 async function getSheetId(baseUrl: string, sheetName: string): Promise<string | null> {
     const htmlUrl = baseUrl.replace('/pub?', '/pubhtml?');
-    let html: string | undefined;
     try {
         const response = await fetch(htmlUrl, { next: { revalidate: 3600 } });
         if (!response.ok) {
-             // If we can't fetch the HTML to check, maybe the base sheet is '0'.
-             // This is a fallback for when the pubhtml page is not available but the csv export might be.
-            console.warn(`Could not fetch HTML to find GID. Response status: ${response.status}.`);
-            if (sheetName.toLowerCase() === 'main') {
-                console.log("Defaulting to GID '0' for 'Main' sheet as a fallback.");
-                return '0';
-            }
-            return null;
+            console.warn(`Could not fetch HTML to find GID (Status: ${response.status}). Will fall back to GID '0'.`);
+            return '0';
         }
-        html = await response.text();
-        const sheetMenu = html.match(/<ul id="sheet-menu">(.*?)<\/ul>/);
-        if (sheetMenu) {
-            const links = sheetMenu[1].matchAll(/<a href="#gid=(\d+?)">(.*?)<\/a>/g);
+        
+        const html = await response.text();
+        const sheetMenu = html.match(/<ul id="sheet-menu".*?>(.*?)<\/ul>/s);
+
+        if (sheetMenu && sheetMenu[1]) {
+            const links = [...sheetMenu[1].matchAll(/<a href="#gid=(\d+?)".*?>(.*?)<\/a>/g)];
             for (const link of links) {
-                if (link[2].trim().toLowerCase() === sheetName.toLowerCase()) {
+                // link[1] is gid, link[2] is sheet name
+                if (link[2] && link[2].trim().toLowerCase() === sheetName.toLowerCase()) {
                     console.log(`Found sheet "${sheetName}" with GID: ${link[1]}`);
                     return link[1]; // Found the sheet by name
                 }
             }
         }
 
-        // If we are here, it means we couldn't find the sheet by name in the menu.
-        // Let's check if the sheetName is 'Main', maybe it's the very first sheet.
+        // If 'Main' is requested and not found by name, it's often the first sheet (gid=0)
         if (sheetName.toLowerCase() === 'main') {
-            const firstSheetGid = html.match(/<a href="#gid=(\d+?)"/);
-            if (firstSheetGid) {
-                console.log(`Could not find "Main" by name, but found first sheet with GID: ${firstSheetGid[1]}. Using it as fallback.`);
-                return firstSheetGid[1];
-            }
-            console.log("Could not find any sheets, defaulting to GID '0' for 'Main'.");
-            return '0'; // Default to '0' if no sheets are found at all, it's the default for the first sheet.
+            console.log(`Sheet "Main" not found by name. Assuming it is the default sheet with GID '0'.`);
+            return '0';
         }
 
     } catch (e) {
-        console.error("Could not fetch sheet GID, defaulting to 0 for 'Main' if applicable.", e);
-        // Fallback for network errors etc.
-        if (sheetName.toLowerCase() === 'main') {
-            return '0';
-        }
+        console.error("Could not fetch sheet GID due to an error. Falling back to GID '0'.", e);
+        return '0';
     }
     
-    console.warn(`Sheet with name "${sheetName}" not found.`);
-    return null; // Return null if a specific sheet name (other than 'Main') is not found
+    console.warn(`Sheet with name "${sheetName}" not found. Returning null.`);
+    return null; // Return null if a specific sheet name is not found
 }
 
 
@@ -107,9 +103,9 @@ function transformRawDataToPolicies(rawData: any[]): Policy[] {
     const ages: Record<string, number> = {};
     // Iterate over the keys in the row to find age columns
     for (const key in row) {
-      // Check if the key is a number (representing an age)
+      // Check if the key is a number (representing an age) and has a value
       if (!isNaN(Number(key)) && row[key] !== null && row[key] !== undefined) {
-        ages[key] = row[key];
+        ages[key] = Number(row[key]);
       }
     }
     return {
@@ -134,9 +130,10 @@ export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<O
   const rawData = await fetchAndParseSheet(url, 'Main');
   console.log('Raw data for policy transformation:', rawData);
   const policies = transformRawDataToPolicies(rawData);
-  console.log('Transformed policies for dropdown:', policies);
-  // Return only id and name for the selection list
-  return policies.map(({ id, name }) => ({ id, name, ages: {} }));
+  // Return only id and name for the selection list, which is what the component needs
+  const selectionList = policies.map(({ id, name }) => ({ id, name, ages: {} }));
+  console.log('Transformed policies for dropdown:', selectionList);
+  return selectionList;
 }
 
 
@@ -148,7 +145,7 @@ function calculateBasePremium(age: number, mainPolicy: { policy?: string, amount
     const policyData = policies.find(p => p.id === mainPolicy.policy);
 
     if (!policyData || !policyData.ages || policyData.ages[age] === undefined || policyData.ages[age] === null) {
-        // Rate for the specific age not found, return 0 or handle as an error
+        console.warn(`Rate for age ${age} in policy ${mainPolicy.policy} not found.`);
         return 0;
     }
     
