@@ -2,27 +2,14 @@
 
 import type { PremiumFormData, PremiumCalculation, YearlyPremium, Policy } from "@/lib/types";
 
-// Mock data, to be replaced with actual data fetching
-const mockMalePolicies: Policy[] = [
-  { id: 'M1', name: 'Smart Man Plus' },
-  { id: 'M2', name: 'Gentle-life' },
-];
-
-const mockFemalePolicies: Policy[] = [
-  { id: 'F1', name: 'Lady First' },
-  { id: 'F2', name: 'Wonder Woman Plan' },
-];
+// This file is now using DOMParser, which is not available in this environment.
+// The logic has been moved to actions.ts and this file is kept for historical reference.
+// We are returning empty arrays and mock data to prevent build errors.
 
 export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<Omit<Policy, 'ages'>[]> {
   console.log(`Fetching policies for gender: ${gender}`);
-  // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 500));
-  
-  if (gender === 'male') {
-    return mockMalePolicies;
-  } else {
-    return mockFemalePolicies;
-  }
+  return [];
 }
 
 function calculateMockPremium(formData: PremiumFormData): { yearlyBreakdown: YearlyPremium[], chartData: PremiumCalculation['chartData'] } {
@@ -62,13 +49,11 @@ export async function getPremiumSummary(
 ): Promise<PremiumCalculation> {
   console.log("Calculating premium with form data:", formData);
   
-  // Simulate network delay for calculation
   await new Promise(resolve => setTimeout(resolve, 1500));
   
   try {
     const { yearlyBreakdown, chartData } = calculateMockPremium(formData);
     
-    // Simple summary, can be enhanced with GenAI later
     const summary = `นี่คือตัวอย่างสรุปเบี้ยประกันสำหรับเพศ ${formData.gender === 'male' ? 'ชาย' : 'หญิง'} อายุ ${formData.userAge} ปี`;
     const note = formData.userAge > 60 ? 'หมายเหตุ: เบี้ยประกันอาจสูงขึ้นสำหรับผู้ที่มีอายุเกิน 60 ปี' : undefined;
     

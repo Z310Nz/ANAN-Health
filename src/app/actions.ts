@@ -4,12 +4,14 @@ import type { PremiumFormData, PremiumCalculation, YearlyPremium, Policy } from 
 import Papa from 'papaparse';
 
 async function fetchAndParseSheet(baseUrl: string, sheetName: string): Promise<any[]> {
-  const sheetUrl = `${baseUrl.replace('/pub?', '/export?format=csv&sheet=')}${encodeURIComponent(sheetName)}`;
-
+  // If the base URL isn't set or is still the placeholder, don't even try to fetch.
   if (!baseUrl || baseUrl.includes("YOUR_")) {
-    console.error("Google Sheet URL is not configured. Please set it in .env");
+    console.error(`Google Sheet URL is not configured. Please set the appropriate environment variable.`);
     return [];
   }
+  
+  const sheetUrl = `${baseUrl.replace('/pub?', '/pubhtml?').replace('/pubhtml', '/export?format=csv&gid=')}${await getSheetId(baseUrl, sheetName)}`;
+
   try {
     const response = await fetch(sheetUrl, { next: { revalidate: 3600 } }); // Revalidate every hour
     if (!response.ok) {
@@ -34,6 +36,31 @@ async function fetchAndParseSheet(baseUrl: string, sheetName: string): Promise<a
     return [];
   }
 }
+
+// Helper function to find the GID of a sheet by its name from the published HTML
+async function getSheetId(baseUrl: string, sheetName: string): Promise<string> {
+    const htmlUrl = baseUrl.replace('/pub?', '/pubhtml?');
+    try {
+        const response = await fetch(htmlUrl, { next: { revalidate: 3600 } });
+        if (!response.ok) return '0'; // Default to first sheet if we can't fetch
+        const html = await response.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const sheetLinks = doc.querySelectorAll('#sheet-menu li a');
+        for (const link of Array.from(sheetLinks)) {
+            if (link.textContent?.trim() === sheetName) {
+                const href = link.getAttribute('href');
+                const gidMatch = href?.match(/gid=(\d+)/);
+                if (gidMatch) {
+                    return gidMatch[1];
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Could not fetch sheet GID, defaulting to 0", e);
+    }
+    return '0'; // Fallback to the first sheet (gid=0) if not found
+}
+
 
 function transformRawDataToPolicies(rawData: any[]): Policy[] {
   return rawData.map(row => {
