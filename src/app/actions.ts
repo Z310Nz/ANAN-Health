@@ -10,7 +10,13 @@ async function fetchAndParseSheet(baseUrl: string, sheetName: string): Promise<a
     return [];
   }
   
-  const sheetUrl = `${baseUrl.replace('/pub?', '/pubhtml?').replace('/pubhtml', '/export?format=csv&gid=')}${await getSheetId(baseUrl, sheetName)}`;
+  const sheetId = await getSheetId(baseUrl, sheetName);
+  if (sheetId === null) {
+      console.error(`Could not find sheet with name "${sheetName}" in the published Google Sheet.`);
+      return [];
+  }
+  
+  const sheetUrl = `${baseUrl.replace('/pub?', '/pubhtml?').replace('/pubhtml', '/export?format=csv&gid=')}${sheetId}`;
 
   try {
     const response = await fetch(sheetUrl, { next: { revalidate: 3600 } }); // Revalidate every hour
@@ -38,7 +44,7 @@ async function fetchAndParseSheet(baseUrl: string, sheetName: string): Promise<a
 }
 
 // Helper function to find the GID of a sheet by its name from the published HTML
-async function getSheetId(baseUrl: string, sheetName: string): Promise<string> {
+async function getSheetId(baseUrl: string, sheetName: string): Promise<string | null> {
     const htmlUrl = baseUrl.replace('/pub?', '/pubhtml?');
     try {
         const response = await fetch(htmlUrl, { next: { revalidate: 3600 } });
@@ -48,7 +54,7 @@ async function getSheetId(baseUrl: string, sheetName: string): Promise<string> {
         if (sheetMenu) {
             const links = sheetMenu[1].matchAll(/<a href="#gid=(\d+?)">(.*?)<\/a>/g);
             for (const link of links) {
-                if (link[2].trim() === sheetName) {
+                if (link[2].trim().toLowerCase() === sheetName.toLowerCase()) {
                     return link[1];
                 }
             }
@@ -56,7 +62,12 @@ async function getSheetId(baseUrl: string, sheetName: string): Promise<string> {
     } catch (e) {
         console.error("Could not fetch sheet GID, defaulting to 0", e);
     }
-    return '0'; // Fallback to the first sheet (gid=0) if not found
+    // If we are here, it means we couldn't find the sheet by name.
+    // Let's check if the sheetName is 'Main' and we didn't find it, maybe it's the first one.
+    if (sheetName.toLowerCase() === 'main') {
+        return '0';
+    }
+    return null; // Return null if a specific sheet name (other than 'Main') is not found
 }
 
 
