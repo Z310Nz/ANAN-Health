@@ -40,3 +40,10 @@ export type PremiumCalculation = {
     Total: number;
   }[];
 };
+
+// Represents the application user, from LINE
+export type User = {
+  id: string; // From LINE: userId
+  displayName: string;
+  avatarUrl?: string; // From LINE: pictureUrl
+}
