@@ -44,14 +44,12 @@ async function getSheetId(baseUrl: string, sheetName: string): Promise<string> {
         const response = await fetch(htmlUrl, { next: { revalidate: 3600 } });
         if (!response.ok) return '0'; // Default to first sheet if we can't fetch
         const html = await response.text();
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        const sheetLinks = doc.querySelectorAll('#sheet-menu li a');
-        for (const link of Array.from(sheetLinks)) {
-            if (link.textContent?.trim() === sheetName) {
-                const href = link.getAttribute('href');
-                const gidMatch = href?.match(/gid=(\d+)/);
-                if (gidMatch) {
-                    return gidMatch[1];
+        const sheetMenu = html.match(/<ul id="sheet-menu">(.*?)<\/ul>/);
+        if (sheetMenu) {
+            const links = sheetMenu[1].matchAll(/<a href="#gid=(\d+?)">(.*?)<\/a>/g);
+            for (const link of links) {
+                if (link[2].trim() === sheetName) {
+                    return link[1];
                 }
             }
         }
@@ -81,7 +79,7 @@ function transformRawDataToPolicies(rawData: any[]): Policy[] {
 }
 
 
-export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<Policy[]> {
+export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<Omit<Policy, 'ages'>[]> {
   const url = gender === 'male' 
     ? process.env.GOOGLE_SHEET_MALE_URL
     : process.env.GOOGLE_SHEET_FEMALE_URL;
@@ -120,16 +118,17 @@ function calculateBasePremium(age: number, mainPolicy: { policy?: string, amount
 async function generateBreakdown(formData: PremiumFormData): Promise<{ yearlyBreakdown: YearlyPremium[], chartData: PremiumCalculation['chartData'] }> {
   const yearlyBreakdown: YearlyPremium[] = [];
   const chartData: PremiumCalculation['chartData'] = [];
-  
-  const malePoliciesRaw = await fetchAndParseSheet(process.env.GOOGLE_SHEET_MALE_URL!, 'Main');
-  const femalePoliciesRaw = await fetchAndParseSheet(process.env.GOOGLE_SHEET_FEMALE_URL!, 'Main');
 
-  const allPolicies = {
-    male: transformRawDataToPolicies(malePoliciesRaw),
-    female: transformRawDataToPolicies(femalePoliciesRaw)
-  };
-  
-  const relevantPolicies = allPolicies[formData.gender];
+  const sheetUrl = formData.gender === 'male' 
+    ? process.env.GOOGLE_SHEET_MALE_URL
+    : process.env.GOOGLE_SHEET_FEMALE_URL;
+
+  if (!sheetUrl) {
+    throw new Error(`Google Sheet URL for ${formData.gender} is not configured.`);
+  }
+
+  const policiesRaw = await fetchAndParseSheet(sheetUrl, 'Main');
+  const relevantPolicies = transformRawDataToPolicies(policiesRaw);
 
   // For this simplified example, we'll assume riders have a fixed cost per year.
   // A real implementation would fetch rider rates from a sheet as well.
