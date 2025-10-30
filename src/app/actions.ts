@@ -29,6 +29,7 @@ async function fetchAndParseSheet(baseUrl: string, sheetName: string): Promise<a
         header: true,
         dynamicTyping: true,
         skipEmptyLines: true,
+        transformHeader: header => header.trim().replace(/\s+/g, '_'),
         complete: (results) => {
           resolve(results.data);
         },
@@ -65,6 +66,10 @@ async function getSheetId(baseUrl: string, sheetName: string): Promise<string | 
     // If we are here, it means we couldn't find the sheet by name.
     // Let's check if the sheetName is 'Main' and we didn't find it, maybe it's the first one.
     if (sheetName.toLowerCase() === 'main') {
+        const firstSheetGid = html.match(/<a href="#gid=(\d+?)"/);
+        if (firstSheetGid) {
+            return firstSheetGid[1];
+        }
         return '0';
     }
     return null; // Return null if a specific sheet name (other than 'Main') is not found
@@ -82,8 +87,8 @@ function transformRawDataToPolicies(rawData: any[]): Policy[] {
       }
     }
     return {
-      id: row.id,
-      name: row.name,
+      id: row.segment_Code,
+      name: row.segment,
       ages: ages,
     };
   }).filter(p => p.id && p.name); // Filter out rows without id or name
