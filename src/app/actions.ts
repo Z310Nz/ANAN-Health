@@ -3,14 +3,15 @@
 import type { PremiumFormData, PremiumCalculation, YearlyPremium, Policy } from "@/lib/types";
 import Papa from 'papaparse';
 
-async function fetchAndParseSheet(url: string): Promise<any[]> {
-  if (!url || url === "YOUR_MALE_CSV_URL_HERE" || url === "YOUR_FEMALE_CSV_URL_HERE") {
-    console.error("Google Sheet URL is not configured. Please set it in .env.local");
-    // Return a default structure to avoid crashing the app
+async function fetchAndParseSheet(baseUrl: string, sheetName: string): Promise<any[]> {
+  const sheetUrl = `${baseUrl.replace('/pub?', '/export?format=csv&sheet=')}${encodeURIComponent(sheetName)}`;
+
+  if (!baseUrl || baseUrl.includes("YOUR_")) {
+    console.error("Google Sheet URL is not configured. Please set it in .env");
     return [];
   }
   try {
-    const response = await fetch(url, { next: { revalidate: 3600 } }); // Revalidate every hour
+    const response = await fetch(sheetUrl, { next: { revalidate: 3600 } }); // Revalidate every hour
     if (!response.ok) {
       throw new Error(`Failed to fetch Google Sheet: ${response.statusText}`);
     }
@@ -40,7 +41,7 @@ function transformRawDataToPolicies(rawData: any[]): Policy[] {
     // Iterate over the keys in the row to find age columns
     for (const key in row) {
       // Check if the key is a number (representing an age)
-      if (!isNaN(Number(key))) {
+      if (!isNaN(Number(key)) && row[key] !== null && row[key] !== undefined) {
         ages[key] = row[key];
       }
     }
@@ -49,19 +50,21 @@ function transformRawDataToPolicies(rawData: any[]): Policy[] {
       name: row.name,
       ages: ages,
     };
-  });
+  }).filter(p => p.id && p.name); // Filter out rows without id or name
 }
+
 
 export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<Policy[]> {
   const url = gender === 'male' 
-    ? process.env.GOOGLE_SHEET_MALE_CSV_URL
-    : process.env.GOOGLE_SHEET_FEMALE_CSV_URL;
+    ? process.env.GOOGLE_SHEET_MALE_URL
+    : process.env.GOOGLE_SHEET_FEMALE_URL;
 
   if (!url) {
+    console.error(`Google Sheet URL for ${gender} is not defined in environment variables.`);
     return [];
   }
   
-  const rawData = await fetchAndParseSheet(url);
+  const rawData = await fetchAndParseSheet(url, 'Main');
   const policies = transformRawDataToPolicies(rawData);
   // Return only id and name for the selection list
   return policies.map(({ id, name }) => ({ id, name, ages: {} }));
@@ -74,7 +77,8 @@ function calculateBasePremium(age: number, mainPolicy: { policy?: string, amount
     }
     
     const policyData = policies.find(p => p.id === mainPolicy.policy);
-    if (!policyData || !policyData.ages[age]) {
+
+    if (!policyData || !policyData.ages || policyData.ages[age] === undefined || policyData.ages[age] === null) {
         // Rate for the specific age not found, return 0 or handle as an error
         return 0;
     }
@@ -90,8 +94,8 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{ yearlyBre
   const yearlyBreakdown: YearlyPremium[] = [];
   const chartData: PremiumCalculation['chartData'] = [];
   
-  const malePoliciesRaw = await fetchAndParseSheet(process.env.GOOGLE_SHEET_MALE_CSV_URL!);
-  const femalePoliciesRaw = await fetchAndParseSheet(process.env.GOOGLE_SHEET_FEMALE_CSV_URL!);
+  const malePoliciesRaw = await fetchAndParseSheet(process.env.GOOGLE_SHEET_MALE_URL!, 'Main');
+  const femalePoliciesRaw = await fetchAndParseSheet(process.env.GOOGLE_SHEET_FEMALE_URL!, 'Main');
 
   const allPolicies = {
     male: transformRawDataToPolicies(malePoliciesRaw),
