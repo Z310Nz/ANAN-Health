@@ -49,29 +49,40 @@ async function getSheetId(baseUrl: string, sheetName: string): Promise<string | 
     const htmlUrl = baseUrl.replace('/pub?', '/pubhtml?');
     try {
         const response = await fetch(htmlUrl, { next: { revalidate: 3600 } });
-        if (!response.ok) return '0'; // Default to first sheet if we can't fetch
+        if (!response.ok) {
+             // If we can't fetch the HTML to check, maybe the base sheet is '0'.
+             // This is a fallback for when the pubhtml page is not available but the csv export might be.
+            return sheetName.toLowerCase() === 'main' ? '0' : null;
+        }
         const html = await response.text();
         const sheetMenu = html.match(/<ul id="sheet-menu">(.*?)<\/ul>/);
         if (sheetMenu) {
             const links = sheetMenu[1].matchAll(/<a href="#gid=(\d+?)">(.*?)<\/a>/g);
             for (const link of links) {
                 if (link[2].trim().toLowerCase() === sheetName.toLowerCase()) {
-                    return link[1];
+                    return link[1]; // Found the sheet by name
                 }
             }
         }
-    } catch (e) {
-        console.error("Could not fetch sheet GID, defaulting to 0", e);
-    }
-    // If we are here, it means we couldn't find the sheet by name.
-    // Let's check if the sheetName is 'Main' and we didn't find it, maybe it's the first one.
-    if (sheetName.toLowerCase() === 'main') {
-        const firstSheetGid = html.match(/<a href="#gid=(\d+?)"/);
-        if (firstSheetGid) {
-            return firstSheetGid[1];
+
+        // If we are here, it means we couldn't find the sheet by name.
+        // Let's check if the sheetName is 'Main', maybe it's the very first sheet.
+        if (sheetName.toLowerCase() === 'main') {
+            const firstSheetGid = html.match(/<a href="#gid=(\d+?)"/);
+            if (firstSheetGid) {
+                return firstSheetGid[1];
+            }
+            return '0'; // Default to '0' if no sheets are found at all, it's the default for the first sheet.
         }
-        return '0';
+
+    } catch (e) {
+        console.error("Could not fetch sheet GID, defaulting to 0 for 'Main' if applicable.", e);
+        // Fallback for network errors etc.
+        if (sheetName.toLowerCase() === 'main') {
+            return '0';
+        }
     }
+    
     return null; // Return null if a specific sheet name (other than 'Main') is not found
 }
 
