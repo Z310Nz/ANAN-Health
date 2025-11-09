@@ -1,7 +1,22 @@
 'use server';
 
 import type { PremiumFormData, PremiumCalculation, YearlyPremium, Policy } from "@/lib/types";
-import sql from '@/lib/db.js';
+import postgres from 'postgres';
+
+// Initialize PostgreSQL connection
+// This will read the DATABASE_URL from the .env file.
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  // In a real app, you might want to log this error or handle it differently.
+  // For now, we'll prevent the app from starting without a DB connection string.
+  console.error('FATAL: DATABASE_URL is not set in the environment variables.');
+  // We throw an error here to make it clear during development that the DB is not configured.
+  // In a production environment, you might want a more graceful fallback or logging.
+  throw new Error('DATABASE_URL environment variable is not defined. Please configure it in your .env file.');
+}
+
+const sql = postgres(connectionString);
 
 
 /**
