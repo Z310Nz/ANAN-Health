@@ -154,11 +154,10 @@ export async function deletePremiumSession(sessionId: string) {
  */
 export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<Omit<Policy, 'ages'>[]> {
   try {
-    const genderChar = gender.toLowerCase() === 'male' ? 'm' : 'f';
     const policies = await sql`
       SELECT DISTINCT segcode as id, segment as name
       FROM regular
-      WHERE lower(gender) = ${genderChar}
+      WHERE lower(gender) = ${gender}
       ORDER BY segment
     `;
     return policies.map(p => ({ ...p, id: p.id, name: p.name, ages: {} }));
@@ -178,11 +177,10 @@ export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<O
  */
 async function calculateBasePremium(age: number, gender: 'male' | 'female', policyId: string, amount: number): Promise<number> {
     try {
-        const genderChar = gender.toLowerCase() === 'male' ? 'm' : 'f';
         const result = await sql`
             SELECT interest FROM regular
             WHERE age = ${age}
-            AND lower(gender) = ${genderChar}
+            AND lower(gender) = ${gender}
             AND segcode = ${policyId}
             LIMIT 1
         `;
