@@ -154,13 +154,14 @@ export async function deletePremiumSession(sessionId: string) {
  */
 export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<Omit<Policy, 'ages'>[]> {
   try {
+    const genderChar = gender.toLowerCase() === 'male' ? 'm' : 'f';
     const policies = await sql`
       SELECT DISTINCT segcode as id, segment as name
       FROM regular
-      WHERE gender = ${gender}
+      WHERE lower(gender) = ${genderChar}
       ORDER BY segment
     `;
-    return policies.map(p => ({ ...p, ages: {} })); // Return with empty ages object to match type
+    return policies.map(p => ({ ...p, id: p.id, name: p.name, ages: {} }));
   } catch (error) {
     console.error(`[DB] Error fetching policies for gender ${gender}:`, error);
     throw new Error('Failed to fetch policies.');
@@ -177,10 +178,11 @@ export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<O
  */
 async function calculateBasePremium(age: number, gender: 'male' | 'female', policyId: string, amount: number): Promise<number> {
     try {
+        const genderChar = gender.toLowerCase() === 'male' ? 'm' : 'f';
         const result = await sql`
             SELECT interest FROM regular
             WHERE age = ${age}
-            AND gender = ${gender}
+            AND lower(gender) = ${genderChar}
             AND segcode = ${policyId}
             LIMIT 1
         `;
