@@ -2,6 +2,80 @@
 
 import type { PremiumFormData, PremiumCalculation, YearlyPremium, Policy } from "@/lib/types";
 import Papa from 'papaparse';
+import sql from '@/lib/db.js';
+
+// --- Database Example Functions ---
+
+/**
+ * [READ] ดึงข้อมูลเซสชันการคำนวณทั้งหมดของผู้ใช้คนนั้นๆ
+ * @param userId - ID ของผู้ใช้
+ * @returns Array ของ session objects
+ */
+export async function getPremiumSessionsForUser(userId: string) {
+  console.log(`[DB] Fetching sessions for user: ${userId}`);
+  // ใช้ tagged template literal ที่ปลอดภัยในการส่งค่า parameter
+  const sessions = await sql`
+    SELECT * FROM premium_calculation_sessions
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+  `;
+  console.log(`[DB] Found ${sessions.length} sessions.`);
+  return sessions;
+}
+
+/**
+ * [CREATE] บันทึกเซสชันการคำนวณใหม่ลงในฐานข้อมูล
+ * @param sessionData - ข้อมูล session ที่จะบันทึก
+ * @returns ข้อมูล session ที่ถูกสร้างขึ้น
+ */
+export async function savePremiumSession(sessionData: { userId: string, inputData: object, calculationResult: object }) {
+  console.log('[DB] Saving new session for user:', sessionData.userId);
+  // `sql` จะช่วยแปลง object เป็น JSON string ให้โดยอัตโนมัติ
+  const result = await sql`
+    INSERT INTO premium_calculation_sessions (user_id, input_data, calculation_result)
+    VALUES (${sessionData.userId}, ${JSON.stringify(sessionData.inputData)}, ${JSON.stringify(sessionData.calculationResult)})
+    RETURNING *
+  `;
+  console.log('[DB] Session saved:', result[0]);
+  return result[0];
+}
+
+/**
+ * [UPDATE] อัปเดตผลลัพธ์การคำนวณของเซสชันที่มีอยู่
+ * @param sessionId - ID ของเซสชันที่ต้องการอัปเดต
+ * @param newResult - ข้อมูลผลลัพธ์ใหม่
+ * @returns ข้อมูล session ที่ถูกอัปเดต
+ */
+export async function updatePremiumSessionResult(sessionId: string, newResult: object) {
+  console.log(`[DB] Updating session: ${sessionId}`);
+  const result = await sql`
+    UPDATE premium_calculation_sessions
+    SET calculation_result = ${JSON.stringify(newResult)}, updated_at = NOW()
+    WHERE id = ${sessionId}
+    RETURNING *
+  `;
+  console.log('[DB] Session updated:', result[0]);
+  return result[0];
+}
+
+/**
+ * [DELETE] ลบเซสชันการคำนวณ
+ * @param sessionId - ID ของเซสชันที่ต้องการลบ
+ * @returns ข้อมูล session ที่ถูกลบ
+ */
+export async function deletePremiumSession(sessionId: string) {
+  console.log(`[DB] Deleting session: ${sessionId}`);
+  const result = await sql`
+    DELETE FROM premium_calculation_sessions
+    WHERE id = ${sessionId}
+    RETURNING *
+  `;
+  console.log('[DB] Session deleted:', result[0]);
+  return result[0];
+}
+
+
+// --- Original Google Sheet Functions ---
 
 async function fetchAndParseSheet(baseUrl: string, sheetName: string): Promise<any[]> {
   // If the base URL isn't set or is still the placeholder, don't even try to fetch.
