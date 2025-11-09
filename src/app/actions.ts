@@ -177,11 +177,24 @@ export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<O
     // Hardcoded list of policies to bypass database connection issues for the dropdown.
     // The ID (segcode) will still be used to query the database for calculation.
     const hardcodedPolicies = [
-        { id: "EASY", name: "ประกันชีวิต อีซี่ อี-เฮลท์" },
-        { id: "EXTRA", name: "ประกันชีวิต เอ็กซ์ตร้า" },
-        { id: "SAVE", name: "ประกันชีวิตคุ้มครองตลอดชีพ 99/20" },
-        { id: "LEGACY", name: "ประกันชีวิตเพื่อมรดก" },
-        { id: "UL", name: "ยูนิต ลิงค์" }
+        { id: "20PLN", name: "AIA 20 Pay Life (Non Par)" },
+        { id: "15Pay25", name: "AIA Endowment 15/25 (Non Par)" },
+        { id: "Excel", name: "AIA Excellent (Non Par)" },
+        { id: "CISC10", name: "AIA CI SuperCare 10/99" },
+        { id: "CISC20", name: "AIA CI SuperCare 20/99" },
+        { id: "CIPC", name: "AIA CI ProCare" },
+        { id: "AnnFix", name: "AIA Annuity FIX" },
+        { id: "AnnSure60", name: "AIA Annuity Sure 60" },
+        { id: "AnnSure9", name: "AIA Annuity Sure 9" },
+        { id: "10PLP", name: "AIA Pay Life Plus (Non Par) 10" },
+        { id: "15PLP", name: "AIA Pay Life Plus (Non Par) 15" },
+        { id: "20PLP", name: "AIA Pay Life Plus (Non Par) 20" },
+        { id: "10PLN", name: "AIA 10 Pay Life (Non Par)" },
+        { id: "15PLN", name: "AIA 15 Pay Life (Non Par)" },
+        { id: "SVS", name: "AIA Saving Sure (Non Par)" },
+        { id: "ALP10", name: "AIA Legacy Prestige Plus 10" },
+        { id: "ALP15", name: "AIA Legacy Prestige Plus 15" },
+        { id: "ALP20", name: "AIA Legacy Prestige Plus 20" },
     ];
     
     // We can still have gender-specific logic if needed in the future
