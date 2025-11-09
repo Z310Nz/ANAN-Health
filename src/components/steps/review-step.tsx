@@ -2,7 +2,7 @@
 
 import { useFormContext } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import type { PremiumFormData, Policy } from '@/lib/types';
 import { getPoliciesForGender } from '@/app/actions';
