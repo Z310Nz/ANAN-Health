@@ -117,8 +117,6 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
   const gender = getValues('gender');
   const riders = watch('riders') || [];
   
-  const { fields: policyFields, append, remove } = useFieldArray({ control, name: "policies" });
-
   const [policies, setPolicies] = useState<Omit<Policy, 'ages'>[]>([]);
   const [policiesLoading, setPoliciesLoading] = useState(false);
 
@@ -151,49 +149,41 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
         <div>
           <h3 className="text-lg font-semibold mb-4">กรมธรรม์หลัก</h3>
           <div className="space-y-4">
-            {policyFields.map((item, index) => (
-              <div key={item.id} className="grid grid-cols-[2fr_1fr_auto] items-start gap-2">
-                <FormField
-                  control={control}
-                  name={`policies.${index}.policy`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={policiesLoading}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={policiesLoading ? "กำลังโหลด..." : "เลือกกรมธรรม์"} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {policies?.map((policy) => (
-                            <SelectItem key={policy.id} value={policy.id}>{policy.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={control}
-                  name={`policies.${index}.amount`}
-                  render={({ field }) => (
-                    <FormItem>
+            <div className="grid grid-cols-[2fr_1fr] items-start gap-2">
+              <FormField
+                control={control}
+                name={`policies.0.policy`}
+                render={({ field }) => (
+                  <FormItem>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={policiesLoading}>
                       <FormControl>
-                        <Input type="number" placeholder="วงเงิน" {...field} value={field.value || ''} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} />
+                        <SelectTrigger>
+                          <SelectValue placeholder={policiesLoading ? "กำลังโหลด..." : "เลือกกรมธรรม์"} />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="mt-1 text-muted-foreground hover:text-destructive">
-                    <span className="text-2xl">×</span>
-                </Button>
-              </div>
-            ))}
-             <Button type="button" variant="outline" size="sm" onClick={() => append({ policy: undefined, amount: undefined })}>
-                เพิ่มกรมธรรม์
-            </Button>
+                      <SelectContent>
+                        {policies?.map((policy) => (
+                          <SelectItem key={policy.id} value={policy.id}>{policy.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={control}
+                name={`policies.0.amount`}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input type="number" placeholder="วงเงิน" {...field} value={field.value || ''} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
         </div>
         
