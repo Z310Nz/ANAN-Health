@@ -1,16 +1,17 @@
 'use client';
 
 import { useFormContext, useFieldArray } from 'react-hook-form';
-import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
+import { FormControl, FormField, FormItem, FormMessage, FormLabel } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import type { Rider, Policy, PremiumFormData } from '@/lib/types';
 import { getPoliciesForGender } from '@/app/actions';
 import { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 
 type CoverageStepProps = {
   onBack: () => void;
@@ -110,39 +111,28 @@ const riderDropdownOptions: Record<string, RiderOptions> = {
   },
 };
 
-
-const hardcodedPolicies = [
-    { id: "AIA20PL", name: "AIA 20 Pay Life (Non Par)" },
-    { id: "AIAE1525", name: "AIA Endowment 15/25 (Non Par)" },
-    { id: "AIAEXC", name: "AIA Excellent (Non Par)" },
-    { id: "AIACISC1099", name: "AIA CI SuperCare 10/99" },
-    { id: "AIACISC2099", name: "AIA CI SuperCare 20/99" },
-    { id: "AIACIPC", name: "AIA CI ProCare" },
-    { id: "AIAAF", name: "AIA Annuity FIX" },
-    { id: "AIAAS60", name: "AIA Annuity Sure 60" },
-    { id: "AIAAS9", name: "AIA Annuity Sure 9" },
-    { id: "AIAPLPP10", name: "AIA Pay Life Plus (Non Par) 10" },
-    { id: "AIAPLPP15", name: "AIA Pay Life Plus (Non Par) 15" },
-    { id: "AIAPLPP20", name: "AIA Pay Life Plus (Non Par) 20" },
-    { id: "AIA10PL", name: "AIA 10 Pay Life (Non Par)" },
-    { id: "AIA15PL", name: "AIA 15 Pay Life (Non Par)" },
-    { id: "AIASS", name: "AIA Saving Sure (Non Par)" },
-    { id: "AIALPP10", name: "AIA Legacy Prestige Plus 10" },
-    { id: "AIALPP15", name: "AIA Legacy Prestige Plus 15" },
-    { id: "AIALPP20", name: "AIA Legacy Prestige Plus 20" },
-];
-
-
 export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
   const { control, getValues, watch } = useFormContext<PremiumFormData>();
   
   const gender = getValues('gender');
   const riders = watch('riders') || [];
   
-  const { fields: policyFields } = useFieldArray({ control, name: "policies" });
-  
-  const policies = hardcodedPolicies;
-  const policiesLoading = false;
+  const { fields: policyFields, append, remove } = useFieldArray({ control, name: "policies" });
+
+  const [policies, setPolicies] = useState<Omit<Policy, 'ages'>[]>([]);
+  const [policiesLoading, setPoliciesLoading] = useState(false);
+
+  useEffect(() => {
+    if (gender) {
+        setPoliciesLoading(true);
+        getPoliciesForGender(gender)
+            .then(data => {
+                setPolicies(data);
+            })
+            .catch(err => console.error("Failed to fetch policies:", err))
+            .finally(() => setPoliciesLoading(false));
+    }
+  }, [gender]);
 
   const riderCategories = {
     'ค่ารักษา': riders.map((r, i) => ({...r, index: i})).filter(r => r.category === 'ค่ารักษา'),
@@ -154,14 +144,15 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
   return (
     <Card className="border-0 shadow-none">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-headline">เลือกกรมธรรม์</CardTitle>
+        <CardTitle className="text-2xl font-headline">เลือกความคุ้มครอง</CardTitle>
+        <CardDescription>เลือกกรมธรรม์หลักและอนุสัญญาที่ต้องการ</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6 max-w-lg mx-auto">
+      <CardContent className="space-y-8 max-w-lg mx-auto">
         <div>
           <h3 className="text-lg font-semibold mb-4">กรมธรรม์หลัก</h3>
           <div className="space-y-4">
             {policyFields.map((item, index) => (
-              <div key={item.id} className="grid grid-cols-[1fr_1fr] items-start gap-4">
+              <div key={item.id} className="grid grid-cols-[2fr_1fr_auto] items-start gap-2">
                 <FormField
                   control={control}
                   name={`policies.${index}.policy`}
@@ -170,7 +161,7 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                       <Select onValueChange={field.onChange} defaultValue={field.value} disabled={policiesLoading}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={policiesLoading ? "Loading..." : "เลือกกรมธรรม์"} />
+                            <SelectValue placeholder={policiesLoading ? "กำลังโหลด..." : "เลือกกรมธรรม์"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -189,21 +180,27 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
-                        <Input type="number" placeholder="กรุณาใส่ตัวเลข" {...field} value={field.value || ''} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} />
+                        <Input type="number" placeholder="วงเงิน" {...field} value={field.value || ''} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="mt-1 text-muted-foreground hover:text-destructive">
+                    <span className="text-2xl">×</span>
+                </Button>
               </div>
             ))}
+             <Button type="button" variant="outline" size="sm" onClick={() => append({ policy: undefined, amount: undefined })}>
+                เพิ่มกรมธรรม์
+            </Button>
           </div>
         </div>
         
         <Separator className="my-8" />
 
         <div>
-          <h3 className="text-lg font-semibold mb-4">อนุสัญญา</h3>
+          <h3 className="text-lg font-semibold mb-4">อนุสัญญา (Riders)</h3>
           <div className="space-y-6">
             {Object.entries(riderCategories).map(([category, categoryRiders]) => (
               categoryRiders.length > 0 && (
@@ -211,70 +208,71 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                   <h4 className="font-semibold mb-4 text-gray-600">{category}</h4>
                   <div className="space-y-4">
                     {categoryRiders.map((item) => (
-                      <div key={item.index} className="grid grid-cols-[auto_1fr_1fr] items-start gap-4">
-                        <FormField
-                          control={control}
-                          name={`riders.${item.index}.selected`}
-                          render={({ field }) => (
-                            <FormItem className='flex items-center h-10'>
-                              <FormControl>
-                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
+                       <div key={item.index} className="grid grid-cols-[auto_1fr] items-center gap-4 p-2 rounded-md hover:bg-gray-50">
+                         <FormField
+                            control={control}
+                            name={`riders.${item.index}.selected`}
+                            render={({ field }) => (
+                                <FormItem className="flex items-center h-10">
+                                    <FormControl>
+                                        <Checkbox checked={field.value} onCheckedChange={field.onChange} id={`rider-check-${item.index}`}/>
+                                    </FormControl>
+                                </FormItem>
+                            )}
                         />
-                        <span className="font-medium flex items-center h-10">{item.name}</span>
-                        
-                        {item.type === 'input' && (
-                           <FormField
-                            control={control}
-                            name={`riders.${item.index}.amount`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    placeholder="กรุณาใส่ตัวเลข" 
-                                    {...field} 
-                                    value={field.value || ''} 
-                                    onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-                                    disabled={!riders[item.index]?.selected}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
+                        <div className="grid grid-cols-2 gap-4 items-center">
+                            <FormLabel htmlFor={`rider-check-${item.index}`} className="font-medium cursor-pointer">{item.name}</FormLabel>
+                            
+                            {item.type === 'input' && (
+                               <FormField
+                                control={control}
+                                name={`riders.${item.index}.amount`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormControl>
+                                      <Input 
+                                        type="number" 
+                                        placeholder="ระบุวงเงิน" 
+                                        {...field} 
+                                        value={field.value || ''} 
+                                        onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                                        disabled={!riders[item.index]?.selected}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
                             )}
-                          />
-                        )}
 
-                        {item.type === 'dropdown' && (
-                          <FormField
-                            control={control}
-                            name={`riders.${item.index}.dropdownValue`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <Select 
-                                  onValueChange={field.onChange} 
-                                  defaultValue={field.value} 
-                                  disabled={!riders[item.index]?.selected || !gender}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="เลือกแผน" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {(riderDropdownOptions[item.name]?.[gender] || []).map(option => (
-                                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
+                            {item.type === 'dropdown' && (
+                              <FormField
+                                control={control}
+                                name={`riders.${item.index}.dropdownValue`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <Select 
+                                      onValueChange={field.onChange} 
+                                      defaultValue={field.value} 
+                                      disabled={!riders[item.index]?.selected || !gender}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="เลือกแผน" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        {(riderDropdownOptions[item.name]?.[gender] || []).map(option => (
+                                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
                             )}
-                          />
-                        )}
-                        
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -284,9 +282,9 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between max-w-lg mx-auto">
+      <CardFooter className="flex justify-between max-w-lg mx-auto pt-8">
         <Button type="button" variant="outline" onClick={onBack} className="rounded-full px-10">ย้อนกลับ</Button>
-        <Button type="button" onClick={onNext} className="bg-teal-500 hover:bg-teal-600 rounded-full px-10">ยืนยัน</Button>
+        <Button type="button" onClick={onNext} className="bg-teal-500 hover:bg-teal-600 rounded-full px-10">ต่อไป</Button>
       </CardFooter>
     </Card>
   );

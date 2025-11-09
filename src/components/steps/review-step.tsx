@@ -16,16 +16,21 @@ type ReviewStepProps = {
 export default function ReviewStep({ onBack, isLoading }: ReviewStepProps) {
   const { getValues } = useFormContext<PremiumFormData>();
   const { policies: selectedPolicyIds, riders, gender } = getValues();
-  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [policies, setPolicies] = useState<Omit<Policy, 'ages'>[]>([]);
   const [loadingPolicies, setLoadingPolicies] = useState(true);
 
   useEffect(() => {
     if (gender) {
       setLoadingPolicies(true);
-      getPoliciesForGender(gender).then(data => {
-        setPolicies(data);
-        setLoadingPolicies(false);
-      });
+      getPoliciesForGender(gender)
+        .then(data => {
+          setPolicies(data);
+          setLoadingPolicies(false);
+        })
+        .catch(err => {
+          console.error("Failed to load policies for review:", err);
+          setLoadingPolicies(false);
+        });
     }
   }, [gender]);
 
@@ -35,13 +40,14 @@ export default function ReviewStep({ onBack, isLoading }: ReviewStepProps) {
     return policies?.find(p => p.id === id)?.name || id;
   }
 
-  const selectedPolicies = selectedPolicyIds?.filter(p => p.policy);
+  const selectedPolicies = selectedPolicyIds?.filter(p => p.policy && p.amount);
   const selectedRiders = riders?.filter(r => r.selected);
 
   return (
     <Card className="border-0 shadow-none">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-headline">สรุปเบี้ยประกัน</CardTitle>
+        <CardTitle className="text-2xl font-headline">สรุปข้อมูล</CardTitle>
+        <CardDescription>กรุณาตรวจสอบข้อมูลก่อนยืนยันการคำนวณ</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 max-w-lg mx-auto">
         <div>
@@ -51,7 +57,7 @@ export default function ReviewStep({ onBack, isLoading }: ReviewStepProps) {
                 selectedPolicies.map((p, i) => (
                     <div key={i} className="flex justify-between bg-gray-100 rounded-md p-3 text-gray-700">
                         <span>{getPolicyName(p.policy)}</span>
-                        <span>{p.amount?.toLocaleString() || 'N/A'}</span>
+                        <span className="font-medium">{p.amount?.toLocaleString() || 'N/A'}</span>
                     </div>
                 ))
             ) : (
@@ -62,22 +68,26 @@ export default function ReviewStep({ onBack, isLoading }: ReviewStepProps) {
 
         <div>
           <h3 className="font-semibold mb-2">อนุสัญญา</h3>
-          <div className="bg-gray-100 rounded-md p-3 space-y-2">
-            {selectedRiders && selectedRiders.length > 0 ? (
-                selectedRiders.map((r, i) => (
-                  <div key={i} className="flex justify-between text-gray-700">
-                    <span>{r.name}</span>
-                    <span>{r.type === 'input' ? r.amount?.toLocaleString() : r.dropdownValue || 'N/A'}</span>
-                  </div>
-                ))
+          <div className="space-y-2">
+             {selectedRiders && selectedRiders.length > 0 ? (
+                <div className="bg-gray-100 rounded-md p-3 space-y-2">
+                    {selectedRiders.map((r, i) => (
+                      <div key={i} className="flex justify-between text-gray-700">
+                        <span>{r.name}</span>
+                        <span>{r.type === 'input' ? r.amount?.toLocaleString() : r.dropdownValue || 'N/A'}</span>
+                      </div>
+                    ))}
+                </div>
             ) : (
                 <p className="text-muted-foreground">ไม่ได้เลือกอนุสัญญา</p>
             )}
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between max-w-lg mx-auto">
-        <Button type="button" variant="outline" onClick={onBack} disabled={isLoading} className="rounded-full px-10">ย้อนกลับ</Button>
+      <CardFooter className="flex justify-between max-w-lg mx-auto pt-6">
+        <Button type="button" variant="outline" onClick={onBack} disabled={isLoading} className="rounded-full px-10">
+          ย้อนกลับ
+        </Button>
         <Button type="submit" disabled={isLoading} className="bg-teal-500 hover:bg-teal-600 rounded-full px-10">
           {isLoading ? (
             <>
@@ -85,7 +95,7 @@ export default function ReviewStep({ onBack, isLoading }: ReviewStepProps) {
               กำลังคำนวณ...
             </>
           ) : (
-            'ยืนยัน'
+            'คำนวณเบี้ย'
           )}
         </Button>
       </CardFooter>
