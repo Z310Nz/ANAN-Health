@@ -4,6 +4,62 @@ import type { PremiumFormData, PremiumCalculation, YearlyPremium, Policy } from 
 import Papa from 'papaparse';
 import sql from '@/lib/db.js';
 
+
+/**
+ * [READ] Check if a user exists in the database by their LINE ID.
+ * @param lineId - The user's LINE ID
+ * @returns The user object if found, otherwise null
+ */
+export async function checkUserByLineId(lineId: string) {
+  console.log(`[DB] Checking for user with line_id: ${lineId}`);
+  try {
+    const users = await sql`
+      SELECT * FROM users
+      WHERE line_id = ${lineId}
+      LIMIT 1
+    `;
+    if (users.count > 0) {
+      console.log('[DB] User found:', users[0]);
+      return users[0];
+    }
+    console.log('[DB] User not found.');
+    return null;
+  } catch (error) {
+    console.error('[DB] Error checking user by LINE ID:', error);
+    // Return a structured error or throw
+    return { error: 'Failed to query database.' };
+  }
+}
+
+/**
+ * [CREATE] Register a new user in the database.
+ * @param userData - The user data to save
+ * @returns The newly created user object
+ */
+export async function registerUser(userData: {
+  line_id: string;
+  full_name: string;
+  email: string;
+  mobile_phone: string;
+  display_name: string;
+  picture_url?: string;
+}) {
+  console.log('[DB] Registering new user with line_id:', userData.line_id);
+  try {
+    const result = await sql`
+      INSERT INTO users (line_id, full_name, email, mobile_phone, display_name, picture_url)
+      VALUES (${userData.line_id}, ${userData.full_name}, ${userData.email}, ${userData.mobile_phone}, ${userData.display_name}, ${userData.picture_url || null})
+      RETURNING *
+    `;
+    console.log('[DB] User registered successfully:', result[0]);
+    return result[0];
+  } catch (error) {
+    console.error('[DB] Error registering user:', error);
+    throw new Error('Failed to register user.');
+  }
+}
+
+
 // --- Database Example Functions ---
 
 /**

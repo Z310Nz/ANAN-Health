@@ -9,7 +9,7 @@ type WelcomeScreenProps = {
 };
 
 export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
-  const { user } = useAuth();
+  const { liffUser } = useAuth();
   
   const getInitials = (name: string | undefined) => {
     if (!name) return 'U';
@@ -20,11 +20,11 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
     <div className="flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
         <p className="text-muted-foreground mb-4">anan-health.co.th</p>
         <Avatar className="h-48 w-48 mb-8">
-            <AvatarImage src={user?.avatarUrl} alt={user?.displayName} />
-            <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
+            <AvatarImage src={liffUser?.avatarUrl} alt={liffUser?.displayName} />
+            <AvatarFallback>{getInitials(liffUser?.displayName)}</AvatarFallback>
         </Avatar>
       <h1 className="text-2xl font-bold text-foreground mb-2">
-        ยินดีต้อนรับ “{user?.displayName || 'คุณ'}”
+        ยินดีต้อนรับ “{liffUser?.displayName || 'คุณ'}”
       </h1>
       <h2 className="text-2xl font-bold text-foreground mb-4">
         เข้าสู่ระบบคำนวณเบี้ยประกันภัย

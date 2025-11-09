@@ -1,17 +1,18 @@
 'use client';
 
 import MainApp from '@/components/main-app';
+import RegisterPage from '@/app/register/page';
 import { useAuth } from '@/contexts/auth-context';
 import { Loader2 } from 'lucide-react';
 
 export default function Home() {
-  const { user, loading, liffError } = useAuth();
+  const { liffUser, loading, liffError, isRegistered } = useAuth();
 
   if (loading) {
     return (
       <main className="flex h-screen w-full flex-col items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Initializing...</p>
+        <p className="mt-4 text-muted-foreground">Initializing & Checking User...</p>
       </main>
     );
   }
@@ -26,12 +27,27 @@ export default function Home() {
       </main>
     );
   }
+  
+  if (!liffUser) {
+     return (
+      <main className="flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
+        <h1 className="text-xl font-bold text-destructive mb-4">Could not get user profile</h1>
+        <p className="text-muted-foreground">Please try again or ensure you are logged into LINE.</p>
+      </main>
+    );
+  }
 
-  // If we are not in the LIFF browser or not logged in, we might want to show a message.
-  // For now, we assume the user is always logged in via LIFF.
-  return (
-    <main>
-      <MainApp />
-    </main>
-  );
+  if (isRegistered) {
+    return (
+      <main>
+        <MainApp />
+      </main>
+    );
+  } else {
+    return (
+      <main>
+        <RegisterPage />
+      </main>
+    )
+  }
 }
