@@ -174,22 +174,22 @@ export async function deletePremiumSession(sessionId: string) {
  * @returns A promise that resolves to an array of policies with id and name.
  */
 export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<Omit<Policy, 'ages'>[]> {
-  const sql = getDbConnection();
-  try {
-    // Logging the connection string to verify it's loaded
-    console.log('Attempting to fetch policies with DATABASE_URL:', process.env.DATABASE_URL ? 'Loaded' : 'NOT LOADED');
+    // Hardcoded list of policies to bypass database connection issues for the dropdown.
+    // The ID (segcode) will still be used to query the database for calculation.
+    const hardcodedPolicies = [
+        { id: "EASY", name: "ประกันชีวิต อีซี่ อี-เฮลท์" },
+        { id: "EXTRA", name: "ประกันชีวิต เอ็กซ์ตร้า" },
+        { id: "SAVE", name: "ประกันชีวิตคุ้มครองตลอดชีพ 99/20" },
+        { id: "LEGACY", name: "ประกันชีวิตเพื่อมรดก" },
+        { id: "UL", name: "ยูนิต ลิงค์" }
+    ];
     
-    const policies = await sql<Omit<Policy, 'ages'>[]>`
-      SELECT DISTINCT segcode as id, segment as name
-      FROM regular
-      WHERE lower(gender) = ${gender}
-      ORDER BY segment
-    `;
-    return policies;
-  } catch (error) {
-    console.error(`[DB] Error fetching policies for gender ${gender}:`, error);
-    throw new Error('Failed to fetch policies.');
-  }
+    // We can still have gender-specific logic if needed in the future
+    if (gender === 'male' || gender === 'female') {
+        return hardcodedPolicies;
+    }
+
+    return [];
 }
 
 /**

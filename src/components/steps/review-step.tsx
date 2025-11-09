@@ -20,18 +20,20 @@ export default function ReviewStep({ onBack, isLoading }: ReviewStepProps) {
   const [loadingPolicies, setLoadingPolicies] = useState(true);
 
   useEffect(() => {
-    if (gender) {
-      setLoadingPolicies(true);
-      getPoliciesForGender(gender)
-        .then(data => {
-          setPolicies(data);
-          setLoadingPolicies(false);
-        })
-        .catch(err => {
-          console.error("Failed to load policies for review:", err);
-          setLoadingPolicies(false);
-        });
+    async function fetchPolicies() {
+        if (gender) {
+            setLoadingPolicies(true);
+            try {
+                const data = await getPoliciesForGender(gender);
+                setPolicies(data);
+            } catch (err) {
+                console.error("Failed to load policies for review:", err);
+            } finally {
+                setLoadingPolicies(false);
+            }
+        }
     }
+    fetchPolicies();
   }, [gender]);
 
   const getPolicyName = (id: string | undefined) => {
