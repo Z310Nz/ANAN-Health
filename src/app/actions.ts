@@ -7,6 +7,25 @@ import sql from '@/lib/db.js';
 // --- Database Example Functions ---
 
 /**
+ * [READ] ดึงข้อมูลจากตาราง regular ทั้งหมด
+ * @returns Array ของข้อมูลในตาราง regular
+ */
+export async function getRegularData() {
+  console.log('[DB] Fetching all data from "regular" table...');
+  try {
+    const data = await sql`
+      SELECT * FROM regular
+    `;
+    console.log('[DB] Successfully fetched data from "regular":', data);
+    return data;
+  } catch (error) {
+    console.error('[DB] Error fetching data from "regular":', error);
+    throw new Error('Failed to fetch data from regular table.');
+  }
+}
+
+
+/**
  * [READ] ดึงข้อมูลเซสชันการคำนวณทั้งหมดของผู้ใช้คนนั้นๆ
  * @param userId - ID ของผู้ใช้
  * @returns Array ของ session objects
