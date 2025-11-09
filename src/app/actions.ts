@@ -3,17 +3,20 @@
 import type { PremiumFormData, PremiumCalculation, YearlyPremium, Policy } from "@/lib/types";
 import postgres from 'postgres';
 
-const connectionString = process.env.DATABASE_URL;
+// Helper function to get the database connection
+function getDbConnection() {
+  const connectionString = process.env.DATABASE_URL;
 
-if (!connectionString) {
-  console.error('FATAL: DATABASE_URL is not set in the environment variables.');
-  throw new Error('DATABASE_URL environment variable is not defined. Please configure it in your .env file.');
+  if (!connectionString) {
+    console.error('FATAL: DATABASE_URL is not set in the environment variables.');
+    throw new Error('DATABASE_URL environment variable is not defined. Please configure it in your .env file.');
+  }
+
+  // Enforce SSL connection for Supabase/cloud databases
+  return postgres(connectionString, {
+    ssl: 'require',
+  });
 }
-
-// Enforce SSL connection for Supabase/cloud databases
-const sql = postgres(connectionString, {
-  ssl: 'require',
-});
 
 
 /**
@@ -22,6 +25,7 @@ const sql = postgres(connectionString, {
  * @returns The user object if found, otherwise null
  */
 export async function checkUserByLineId(lineId: string) {
+  const sql = getDbConnection();
   console.log(`[DB] Checking for user with line_id: ${lineId}`);
   try {
     const users = await sql`
@@ -54,6 +58,7 @@ export async function registerUser(userData: {
   display_name: string;
   picture_url?: string;
 }) {
+  const sql = getDbConnection();
   console.log('[DB] Registering new user with line_id:', userData.line_id);
   try {
     const result = await sql`
@@ -75,6 +80,7 @@ export async function registerUser(userData: {
  * @returns Array ของข้อมูลในตาราง regular
  */
 export async function getRegularData() {
+  const sql = getDbConnection();
   console.log('[DB] Fetching all data from "regular" table...');
   try {
     const data = await sql`
@@ -95,6 +101,7 @@ export async function getRegularData() {
  * @returns Array ของ session objects
  */
 export async function getPremiumSessionsForUser(userId: string) {
+  const sql = getDbConnection();
   console.log(`[DB] Fetching sessions for user: ${userId}`);
   const sessions = await sql`
     SELECT * FROM premium_calculation_sessions
@@ -111,6 +118,7 @@ export async function getPremiumSessionsForUser(userId: string) {
  * @returns ข้อมูล session ที่ถูกสร้างขึ้น
  */
 export async function savePremiumSession(sessionData: { userId: string, inputData: object, calculationResult: object }) {
+  const sql = getDbConnection();
   console.log('[DB] Saving new session for user:', sessionData.userId);
   const result = await sql`
     INSERT INTO premium_calculation_sessions (user_id, input_data, calculation_result)
@@ -128,6 +136,7 @@ export async function savePremiumSession(sessionData: { userId: string, inputDat
  * @returns ข้อมูล session ที่ถูกอัปเดต
  */
 export async function updatePremiumSessionResult(sessionId: string, newResult: object) {
+  const sql = getDbConnection();
   console.log(`[DB] Updating session: ${sessionId}`);
   const result = await sql`
     UPDATE premium_calculation_sessions
@@ -145,6 +154,7 @@ export async function updatePremiumSessionResult(sessionId: string, newResult: o
  * @returns ข้อมูล session ที่ถูกลบ
  */
 export async function deletePremiumSession(sessionId: string) {
+  const sql = getDbConnection();
   console.log(`[DB] Deleting session: ${sessionId}`);
   const result = await sql`
     DELETE FROM premium_calculation_sessions
@@ -164,14 +174,17 @@ export async function deletePremiumSession(sessionId: string) {
  * @returns A promise that resolves to an array of policies with id and name.
  */
 export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<Omit<Policy, 'ages'>[]> {
+  const sql = getDbConnection();
   try {
+    // Logging the connection string to verify it's loaded
+    console.log('Attempting to fetch policies with DATABASE_URL:', process.env.DATABASE_URL ? 'Loaded' : 'NOT LOADED');
+    
     const policies = await sql<Omit<Policy, 'ages'>[]>`
       SELECT DISTINCT segcode as id, segment as name
       FROM regular
       WHERE lower(gender) = ${gender}
       ORDER BY segment
     `;
-    // The data is now directly cast to the correct type.
     return policies;
   } catch (error) {
     console.error(`[DB] Error fetching policies for gender ${gender}:`, error);
@@ -188,6 +201,7 @@ export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<O
  * @returns A promise that resolves to the calculated premium for one year.
  */
 async function calculateBasePremium(age: number, gender: 'male' | 'female', policyId: string, amount: number): Promise<number> {
+    const sql = getDbConnection();
     try {
         const result = await sql`
             SELECT interest FROM regular
@@ -217,8 +231,6 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{ yearlyBre
   const yearlyBreakdown: YearlyPremium[] = [];
   const chartData: PremiumCalculation['chartData'] = [];
 
-  // For this simplified example, we'll assume riders have a fixed cost per year.
-  // A real implementation would fetch rider rates from a database as well.
   const selectedRiders = formData.riders?.filter(r => r.selected) || [];
   const ridersYearlyPremium = selectedRiders.reduce((sum, r) => sum + (r.amount || 1000) * 0.2, 0); // Mock calculation for riders
 
@@ -243,7 +255,6 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{ yearlyBre
       total: Math.round(total),
     });
     
-    // Logic to thin out data for the chart to keep it readable
     if (formData.coveragePeriod <= 15 || i % Math.floor(formData.coveragePeriod / 15) === 1 || i === formData.coveragePeriod) {
        chartData.push({
         year: `Year ${i}`,
@@ -265,7 +276,6 @@ export async function getPremiumSummary(
   try {
     const { yearlyBreakdown, chartData } = await generateBreakdown(formData);
     
-    // Simple summary, can be enhanced with GenAI later
     const summary = `นี่คือตัวอย่างสรุปเบี้ยประกันสำหรับเพศ ${formData.gender === 'male' ? 'ชาย' : 'หญิง'} อายุ ${formData.userAge} ปี การคำนวณนี้เป็นการประมาณการเบื้องต้น`;
     const note = formData.userAge > 60 ? 'หมายเหตุ: เบี้ยประกันอาจสูงขึ้นสำหรับผู้ที่มีอายุเกิน 60 ปี' : undefined;
     
