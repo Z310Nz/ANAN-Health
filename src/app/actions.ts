@@ -3,20 +3,17 @@
 import type { PremiumFormData, PremiumCalculation, YearlyPremium, Policy } from "@/lib/types";
 import postgres from 'postgres';
 
-// Initialize PostgreSQL connection
-// This will read the DATABASE_URL from the .env file.
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  // In a real app, you might want to log this error or handle it differently.
-  // For now, we'll prevent the app from starting without a DB connection string.
   console.error('FATAL: DATABASE_URL is not set in the environment variables.');
-  // We throw an error here to make it clear during development that the DB is not configured.
-  // In a production environment, you might want a more graceful fallback or logging.
   throw new Error('DATABASE_URL environment variable is not defined. Please configure it in your .env file.');
 }
 
-const sql = postgres(connectionString);
+// Enforce SSL connection for Supabase/cloud databases
+const sql = postgres(connectionString, {
+  ssl: 'require',
+});
 
 
 /**
@@ -40,7 +37,6 @@ export async function checkUserByLineId(lineId: string) {
     return null;
   } catch (error) {
     console.error('[DB] Error checking user by LINE ID:', error);
-    // Return a structured error or throw
     return { error: 'Failed to query database.' };
   }
 }
@@ -169,13 +165,14 @@ export async function deletePremiumSession(sessionId: string) {
  */
 export async function getPoliciesForGender(gender: 'male' | 'female'): Promise<Omit<Policy, 'ages'>[]> {
   try {
-    const policies = await sql`
+    const policies = await sql<Omit<Policy, 'ages'>[]>`
       SELECT DISTINCT segcode as id, segment as name
       FROM regular
       WHERE lower(gender) = ${gender}
       ORDER BY segment
     `;
-    return policies.map(p => ({ ...p, id: p.id, name: p.name, ages: {} }));
+    // The data is now directly cast to the correct type.
+    return policies;
   } catch (error) {
     console.error(`[DB] Error fetching policies for gender ${gender}:`, error);
     throw new Error('Failed to fetch policies.');
