@@ -76,17 +76,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLiffUser(user);
         await performUserCheck(user);
       } else {
-        const storedUserJson = localStorage.getItem(USER_STORAGE_KEY);
-        if (storedUserJson) {
-            const storedUser = JSON.parse(storedUserJson);
-            setLiffUser(storedUser);
-            await performUserCheck(storedUser);
-        } else {
-            console.log('LIFF: Not logged in and no stored user. Login may be required.');
-            // This is where you might call liff.login() for non-LIFF browser scenarios
-            // For now, we show an error or a login prompt.
-            setIsRegistered(false); // Assume not registered
+        // --- Development/Testing Bypass ---
+        // This block allows access to the app from a normal web browser
+        // by creating a mock user.
+        console.warn('Not in LIFF browser. Using mock user for testing.');
+        const mockUser: AppUser = {
+            id: 'U-mock-1234567890abcdef',
+            displayName: 'Test User',
+            avatarUrl: 'https://picsum.photos/seed/testuser/200/200'
+        };
+        setLiffUser(mockUser);
+        setIsRegistered(true); // Bypass registration check for mock user
+        
+        // Also sign in to Firebase for the mock user
+        if (auth && !auth.currentUser) {
+            try {
+                await signInAnonymously(auth);
+            } catch (fbError) {
+                console.error('Firebase anonymous sign-in for mock user failed:', fbError);
+            }
         }
+        // --- End of Bypass ---
       }
     } catch (error: any) {
       console.error('LIFF Initialization or user check failed', error);
@@ -101,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [performUserCheck]);
+  }, [performUserCheck, auth]);
   
   useEffect(() => {
     initialize();
