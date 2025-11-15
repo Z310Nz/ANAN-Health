@@ -6,19 +6,21 @@ export type Policy = {
 };
 
 export type Rider = {
-    name: string;
-    category: string;
-    type: 'dropdown' | 'input';
-    selected?: boolean;
-    amount?: number;
-    dropdownValue?: string;
+  name: string;
+  category: string;
+  type: "dropdown" | "input";
+  // Optional identifier used for DB lookups (prefers this over `name` when present)
+  id?: string;
+  selected?: boolean;
+  amount?: number;
+  dropdownValue?: string;
 };
 
 export type PremiumFormData = {
   userAge: number;
-  gender: 'male' | 'female';
+  gender: "male" | "female";
   coveragePeriod: number;
-  policies?: { policy?: string, amount?: number }[];
+  policies?: { policy?: string; amount?: number }[];
   riders?: Rider[];
 };
 
@@ -27,6 +29,8 @@ export type YearlyPremium = {
   base: number;
   riders: number;
   total: number;
+  // Per-rider premiums for this year, keyed by rider name
+  riderDetails?: Record<string, number>;
 };
 
 export type PremiumCalculation = {
@@ -46,4 +50,4 @@ export type User = {
   id: string; // From LINE: userId
   displayName: string;
   avatarUrl?: string; // From LINE: pictureUrl
-}
+};

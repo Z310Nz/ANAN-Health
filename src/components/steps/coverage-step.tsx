@@ -28,7 +28,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import type { Rider, Policy, PremiumFormData } from "@/lib/types";
-import { getPoliciesForGender } from "@/app/actions";
+import { getPoliciesForGender, getRidersForGender } from "@/app/actions";
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -185,7 +185,8 @@ const riderDropdownOptions: Record<string, RiderOptions> = {
 };
 
 export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
-  const { control, getValues, watch } = useFormContext<PremiumFormData>();
+  const { control, getValues, watch, setValue } =
+    useFormContext<PremiumFormData>();
 
   const gender = getValues("gender");
   const riders = watch("riders") || [];
@@ -204,6 +205,26 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
         .finally(() => setPoliciesLoading(false));
     }
   }, [gender]);
+
+  // Fetch riders from server action (same pattern as policies)
+  useEffect(() => {
+    if (gender) {
+      getRidersForGender(gender)
+        .then((data) => {
+          // normalize into form Rider type: add selected/amount/dropdownValue fields
+          const normalized = data.map((r) => ({
+            name: r.name,
+            category: r.category,
+            type: r.type,
+            selected: false,
+            amount: undefined,
+            dropdownValue: undefined,
+          }));
+          setValue("riders", normalized);
+        })
+        .catch((err) => console.error("Failed to fetch riders:", err));
+    }
+  }, [gender, setValue]);
 
   const riderCategories = {
     ค่ารักษา: riders
