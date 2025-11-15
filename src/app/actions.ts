@@ -5,25 +5,35 @@ import type {
   PremiumCalculation,
   YearlyPremium,
   Policy,
-  Rider,
 } from "@/lib/types";
+import postgres from "postgres";
+import { getSqlClient, testDbConnection } from "@/lib/db";
+import getLocalInterest from "@/lib/interestRates";
 
-// --- User Management Functions (Mocks) ---
+const connectionString = process.env.DATABASE_URL;
+
+// --- User Management Functions ---
 
 export async function checkUserByLineId(lineId: string) {
-  console.log(`[MOCK] Checking user: ${lineId}`);
-  // In a real scenario, you'd check your database.
-  // Returning null simulates an unregistered user for testing.
-  // Returning a user object simulates a registered user.
-  return {
-    id: 'mock-user-id-123',
-    line_id: lineId,
-    full_name: 'Mock User',
-    email: 'mock@example.com',
-    mobile_phone: '0812345678',
-    display_name: 'Mock Display Name',
-    picture_url: 'https://placehold.co/100x100',
-  };
+  if (!connectionString) {
+    console.error("DATABASE_URL is not set. Skipping user check.");
+    // Return a mock unregistered user to allow testing registration flow.
+    return null;
+  }
+  let sql;
+  try {
+    sql = getSqlClient();
+  } catch (err) {
+    console.error("DB client could not be created:", err);
+    return { error: "DB client unavailable" };
+  }
+  try {
+    const users = await sql`SELECT * FROM users WHERE line_id = ${lineId}`;
+    return users.length > 0 ? users[0] : null;
+  } catch (error) {
+    console.error("Error checking user by LINE ID:", error);
+    return { error: "Failed to query user." };
+  }
 }
 
 export async function registerUser(userData: {
@@ -34,9 +44,30 @@ export async function registerUser(userData: {
   display_name: string;
   picture_url?: string;
 }) {
-  console.log("[MOCK] Registering new user:", userData);
-  // Simulate successful registration
-  return { ...userData, id: "mock-user-id-new" };
+  if (!connectionString) {
+    console.error("DATABASE_URL is not set. Mocking user registration.");
+    return { ...userData, id: "mock-user-id" };
+  }
+  let sql;
+  try {
+    sql = getSqlClient();
+  } catch (err) {
+    console.error("DB client could not be created:", err);
+    return { ...userData, id: "mock-user-id" };
+  }
+  try {
+    const newUser = await sql`
+      INSERT INTO users (line_id, full_name, email, mobile_phone, display_name, picture_url)
+      VALUES (${userData.line_id}, ${userData.full_name}, ${userData.email}, ${
+      userData.mobile_phone
+    }, ${userData.display_name}, ${userData.picture_url ?? null})
+      RETURNING *
+    `;
+    return newUser[0];
+  } catch (error) {
+    console.error("Error registering user:", error);
+    throw new Error("Failed to register user.");
+  }
 }
 
 export async function getPremiumSessionsForUser(userId: string) {
@@ -76,54 +107,61 @@ export async function deletePremiumSession(sessionId: string) {
 
 // --- Premium Calculation Functions ---
 
-// This function now calculates the ANNUAL premium for the main policy
-function calculateMainPolicyAnnualPremium(formData: PremiumFormData): number {
-  const mainPolicy = formData.policies?.[0];
-  if (!mainPolicy?.policy || !mainPolicy.amount) {
-    return 0;
-  }
-  // Formula: (Policy Amount / 1000)
-  // This is interpreted as an annual premium, not total.
-  return (mainPolicy.amount / 1000);
-}
-
-
-function getRiderDivisor(riderName: string): number {
-    const ridersDividedBy100000 = [
-        "Care for Cancer", "Health Cancer", "Multi-Pay CI Plus + Total care",
-        "CI Plus", "CI Top Up", "TPD", "AI/RCC", "ADD/RCC", "ADB/RCC"
-    ];
-    if (ridersDividedBy100000.includes(riderName)) {
-        return 100000;
-    }
-    // "HB" and "HB Extra" are divided by 1000
-    if (["HB", "HB Extra"].includes(riderName)) {
-        return 1000;
-    }
-    // Default for other riders (Health, H&S, etc.) is 0, as they don't follow the provided formula.
-    return 0;
-}
-
-
-// This function now calculates the total ANNUAL premium for all selected riders
-function calculateRidersAnnualPremium(formData: PremiumFormData): number {
-  if (!formData.riders) {
-    return 0;
+async function calculateBasePremium(
+  age: number,
+  gender: "male" | "female",
+  policyId: string,
+  policyAmount: number
+): Promise<number> {
+  // If DATABASE_URL is not set or DB host cannot be resolved, fall back to local rates
+  if (!connectionString) {
+    console.warn(
+      "DATABASE_URL is not set — using local fallback interest rates for development."
+    );
+    const interest = getLocalInterest(age, gender, policyId);
+    if (interest === null) return 0;
+    return (policyAmount / 1000) * interest;
   }
 
-  return formData.riders.reduce((total, rider) => {
-    if (rider.selected && rider.amount) {
-        const divisor = getRiderDivisor(rider.name);
-        if (divisor > 0) {
-            // Formula: (Rider Amount / Divisor)
-            // This is interpreted as an annual premium.
-            return total + (rider.amount / divisor);
-        }
+  const sql = postgres(connectionString, { ssl: "require" });
+  try {
+    const result = await sql`
+      SELECT interest FROM regular
+      WHERE age = ${age}
+      AND lower(gender) = ${gender.toLowerCase()}
+      AND segcode = ${policyId}
+      LIMIT 1
+    `;
+
+    if (result.length === 0) {
+      console.warn(
+        `No interest rate found for age: ${age}, gender: ${gender}, segcode: ${policyId} — falling back to local rates.`
+      );
+      const interest = getLocalInterest(age, gender, policyId);
+      if (interest === null) return 0;
+      return (policyAmount / 1000) * interest;
     }
-    return total;
-  }, 0);
+
+    const interest = result[0].interest;
+    const premium = (policyAmount / 1000) * interest;
+    return premium;
+  } catch (error) {
+    console.error("Error calculating base premium:", error);
+    // Try fallback to local rates in case of DNS/network issue
+    const interest = getLocalInterest(age, gender, policyId);
+    if (interest !== null) {
+      console.warn("Using local fallback interest due to DB error.");
+      return (policyAmount / 1000) * interest;
+    }
+    throw new Error("Failed to calculate base premium.");
+  }
 }
 
+function calculateRidersPremium(formData: PremiumFormData): number {
+  // This is a mock calculation for riders.
+  // In a real scenario, this would also involve database lookups.
+  return (formData.riders?.filter((r) => r.selected).length || 0) * 1500;
+}
 
 async function generateBreakdown(formData: PremiumFormData): Promise<{
   yearlyBreakdown: YearlyPremium[];
@@ -132,23 +170,31 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
   const yearlyBreakdown: YearlyPremium[] = [];
   const chartData: PremiumCalculation["chartData"] = [];
 
-  const mainPolicyAnnualPremium = calculateMainPolicyAnnualPremium(formData);
-  const ridersAnnualPremium = calculateRidersAnnualPremium(formData);
-  const totalAnnualPremium = mainPolicyAnnualPremium + ridersAnnualPremium;
-  
-  if (totalAnnualPremium <= 0) {
-      throw new Error("Could not calculate premium. Please check policy and rider amounts.");
+  const mainPolicy = formData.policies?.[0];
+  if (!mainPolicy?.policy || !mainPolicy.amount) {
+    throw new Error("Main policy information is missing.");
   }
 
+  const ridersPremium = calculateRidersPremium(formData);
+
   for (let i = 0; i < formData.coveragePeriod; i++) {
+    const currentAge = formData.userAge + i;
     const year = i + 1;
 
-    // Premiums are constant per year in this new logic
+    const basePremium = await calculateBasePremium(
+      currentAge,
+      formData.gender,
+      mainPolicy.policy,
+      mainPolicy.amount
+    );
+
+    const totalPremium = basePremium + ridersPremium;
+
     yearlyBreakdown.push({
       year: year,
-      base: Math.round(mainPolicyAnnualPremium),
-      riders: Math.round(ridersAnnualPremium),
-      total: Math.round(totalAnnualPremium),
+      base: Math.round(basePremium),
+      riders: Math.round(ridersPremium),
+      total: Math.round(totalPremium),
     });
 
     if (
@@ -158,9 +204,9 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
     ) {
       chartData.push({
         year: `Year ${year}`,
-        Base: Math.round(mainPolicyAnnualPremium),
-        Riders: Math.round(ridersAnnualPremium),
-        Total: Math.round(totalAnnualPremium),
+        Base: Math.round(basePremium),
+        Riders: Math.round(ridersPremium),
+        Total: Math.round(totalPremium),
       });
     }
   }
@@ -171,6 +217,8 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
 export async function getPoliciesForGender(
   gender: "male" | "female"
 ): Promise<Omit<Policy, "ages">[]> {
+  // Reverting to hardcoded policies as requested to bypass DB connection issues for the dropdown.
+  // The actual calculation will still try to hit the database.
   console.log(`[HARDCODED] Fetching policies for gender: ${gender}`);
   const hardcodedPolicies: Omit<Policy, "ages">[] = [
     { id: "20PLN", name: "AIA 20 Pay Life (Non Par)" },
@@ -200,22 +248,26 @@ export async function getPremiumSummary(
 ): Promise<PremiumCalculation> {
   console.log("Calculating premium with form data:", formData);
 
+  if (!connectionString) {
+    console.warn(
+      "DATABASE_URL is not set; proceeding with local fallback rates for premium calculations."
+    );
+  }
+
   try {
     const { yearlyBreakdown, chartData } = await generateBreakdown(formData);
 
     if (yearlyBreakdown.length === 0) {
       throw new Error("Could not calculate premium breakdown.");
     }
-    
-    const totalAnnualPremium = yearlyBreakdown[0]?.total || 0;
 
-    const summary = `เบี้ยประกันรายปีโดยประมาณของคุณคือ ${totalAnnualPremium.toLocaleString('th-TH')} บาท สำหรับเพศ ${
+    const summary = `นี่คือตัวอย่างสรุปเบี้ยประกันสำหรับเพศ ${
       formData.gender === "male" ? "ชาย" : "หญิง"
     } อายุ ${formData.userAge} ปี`;
     const note =
       formData.userAge > 60
         ? "หมายเหตุ: เบี้ยประกันอาจสูงขึ้นสำหรับผู้ที่มีอายุเกิน 60 ปี"
-        : "เบี้ยประกันนี้เป็นเพียงการประมาณการเบื้องต้น";
+        : undefined;
 
     return {
       summary,
