@@ -211,20 +211,30 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
     if (gender) {
       getRidersForGender(gender)
         .then((data) => {
-          // normalize into form Rider type: add selected/amount/dropdownValue fields
-          const normalized = data.map((r) => ({
-            name: r.name,
-            category: r.category,
-            type: r.type,
-            selected: false,
-            amount: undefined,
-            dropdownValue: undefined,
-          }));
+          // Get existing riders to preserve selections
+          const existingRiders = getValues("riders") || [];
+
+          // Create a map of existing riders by name for quick lookup
+          const existingMap = new Map(existingRiders.map((r) => [r.name, r]));
+
+          // normalize into form Rider type: merge with existing selections
+          const normalized = data.map((r) => {
+            const existing = existingMap.get(r.name);
+            return {
+              name: r.name,
+              category: r.category,
+              type: r.type,
+              // Preserve existing selections if rider exists
+              selected: existing?.selected ?? false,
+              amount: existing?.amount ?? undefined,
+              dropdownValue: existing?.dropdownValue ?? undefined,
+            };
+          });
           setValue("riders", normalized);
         })
         .catch((err) => console.error("Failed to fetch riders:", err));
     }
-  }, [gender, setValue]);
+  }, [gender, setValue, getValues]);
 
   const riderCategories = {
     ค่ารักษา: riders
@@ -294,17 +304,18 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                   <FormItem>
                     <FormControl>
                       <Input
-                        type="number"
-                        placeholder="วงเงิน"
+                        type="text"
+                        placeholder="วงเงิน (100,000 - 100,000,000)"
                         {...field}
-                        value={field.value || ""}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value === ""
-                              ? undefined
-                              : Number(e.target.value)
-                          )
+                        value={
+                          field.value === undefined || field.value === null
+                            ? ""
+                            : (Number(field.value) || 0).toLocaleString()
                         }
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/,/g, "");
+                          field.onChange(raw === "" ? undefined : Number(raw));
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -360,27 +371,52 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                               <FormField
                                 control={control}
                                 name={`riders.${item.index}.amount`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        placeholder="ระบุวงเงิน"
-                                        {...field}
-                                        value={field.value || ""}
-                                        onChange={(e) =>
-                                          field.onChange(
-                                            e.target.value === ""
-                                              ? undefined
-                                              : Number(e.target.value)
-                                          )
-                                        }
-                                        disabled={!riders[item.index]?.selected}
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
+                                render={({ field }) => {
+                                  let minVal = 100;
+                                  let maxVal = 99000;
+                                  if (
+                                    item.category === "ชดเชยโรคร้ายแรง" ||
+                                    item.category === "ชดเชยอุบัติเหตุ"
+                                  ) {
+                                    minVal = 100000;
+                                    maxVal = 100000000;
+                                  }
+                                  const hint = `(${minVal.toLocaleString()} - ${maxVal.toLocaleString()})`;
+                                  return (
+                                    <FormItem>
+                                      <FormControl>
+                                        <Input
+                                          type="text"
+                                          placeholder={`ระบุวงเงิน ${hint}`}
+                                          {...field}
+                                          value={
+                                            field.value === undefined ||
+                                            field.value === null
+                                              ? ""
+                                              : (
+                                                  Number(field.value) || 0
+                                                ).toLocaleString()
+                                          }
+                                          onChange={(e) => {
+                                            const raw = e.target.value.replace(
+                                              /,/g,
+                                              ""
+                                            );
+                                            field.onChange(
+                                              raw === ""
+                                                ? undefined
+                                                : Number(raw)
+                                            );
+                                          }}
+                                          disabled={
+                                            !riders[item.index]?.selected
+                                          }
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  );
+                                }}
                               />
                             )}
 

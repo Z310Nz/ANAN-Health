@@ -29,6 +29,8 @@ export type YearlyPremium = {
   base: number;
   riders: number;
   total: number;
+  // Cumulative total of premiums from start until this year
+  cumulativeTotal: number;
   // Per-rider premiums for this year, keyed by rider name
   riderDetails?: Record<string, number>;
 };

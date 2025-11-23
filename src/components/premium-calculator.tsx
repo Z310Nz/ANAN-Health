@@ -19,19 +19,64 @@ import { ArrowLeft } from "lucide-react";
 
 const SESSION_STORAGE_KEY = "anan-health-calculator-session";
 
-const policySchema = z.object({
-  policy: z.string().optional(),
-  amount: z.coerce.number().optional(),
-});
+const policySchema = z
+  .object({
+    policy: z.string({ required_error: "กรุณาเลือกกรมธรรม์หลัก" }),
+    amount: z.coerce.number({ required_error: "กรุณากรอกวงเงินกรมธรรม์หลัก" }),
+  })
+  .refine(
+    (data) => {
+      if (!data.policy || data.amount === undefined || data.amount === null)
+        return true;
+      return data.amount >= 100000 && data.amount <= 100000000;
+    },
+    {
+      message: "จำนวนเงินกรมธรรม์หลักต้องตั้งแต่ 100,000 - 100,000,000",
+      path: ["amount"],
+    }
+  );
 
-const riderSchema = z.object({
-  name: z.string(),
-  category: z.string(),
-  type: z.enum(["dropdown", "input"]),
-  selected: z.boolean().optional(),
-  amount: z.coerce.number().optional(),
-  dropdownValue: z.string().optional(),
-});
+const riderSchema = z
+  .object({
+    name: z.string(),
+    category: z.string(),
+    type: z.enum(["dropdown", "input"]),
+    selected: z.boolean().optional(),
+    amount: z.coerce.number().optional(),
+    dropdownValue: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // If rider is not selected, allow it (amount/dropdownValue not required)
+      if (!data.selected) return true;
+
+      // If rider is selected and is input-type, amount is required
+      if (data.type === "input") {
+        if (data.amount === undefined || data.amount === null) return false;
+        if (data.category === "ชดเชยรายวัน") {
+          return data.amount >= 100 && data.amount <= 99000;
+        }
+        if (
+          data.category === "ชดเชยโรคร้ายแรง" ||
+          data.category === "ชดเชยอุบัติเหตุ"
+        ) {
+          return data.amount >= 100000 && data.amount <= 100000000;
+        }
+        return true;
+      }
+
+      // If rider is selected and is dropdown-type, dropdownValue is required
+      if (data.type === "dropdown") {
+        return data.dropdownValue !== undefined && data.dropdownValue !== "";
+      }
+
+      return true;
+    },
+    {
+      message: "กรุณากรอกข้อมูลอนุสัญญาที่เลือก",
+      path: ["amount"],
+    }
+  );
 
 const FormSchema = z.object({
   userAge: z.coerce

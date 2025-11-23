@@ -463,29 +463,17 @@ async function calculateRidersPremium(
       age,
     });
 
-    // If rider uses a dropdown plan selection, treat DB `interest` as the
-    // absolute annual premium for that plan (no sumInsured needed).
+    // Dropdown-type riders are excluded from premium calculation per user
+    // request. We skip them here so they are not added to the total.
     if (r.type === "dropdown") {
-      const key = `${age}|${segcode}`;
-      const interest =
-        rateMap && key in rateMap
-          ? rateMap[key]
-          : await getRiderInterest(age, formData.gender, segcode, sqlClient);
-      if (interest === null) {
-        console.debug("[rider] dropdown segcode has no interest; skipping", {
+      console.debug(
+        "[rider] skipping dropdown-type rider in total calculation",
+        {
           name: r.name,
           segcode,
           age,
-        });
-        continue;
-      }
-      console.debug("[rider] dropdown premium used from DB", {
-        name: r.name,
-        segcode,
-        age,
-        premium: interest,
-      });
-      total += interest;
+        }
+      );
       continue;
     }
 
@@ -582,25 +570,19 @@ async function calculateRidersPremiumDetailed(
     // compute per-rider premium
     let riderPremium = 0;
 
-    // dropdown -> DB interest is treated as the annual premium for that plan
+    // Dropdown-type riders are excluded from rider premium calculation per user
+    // request. We still include them in `details` with value 0 so the UI can
+    // show the rider but not include it in totals.
     if (r.type === "dropdown") {
-      const key = `${age}|${segcode}`;
-      const interest =
-        rateMap && key in rateMap
-          ? rateMap[key]
-          : await getRiderInterest(age, formData.gender, segcode, sqlClient);
-      if (interest === null) {
-        console.debug("[rider-detail] dropdown segcode no interest; skipping", {
+      console.debug(
+        "[rider-detail] skipping dropdown-type rider in per-year details",
+        {
           name: r.name,
           segcode,
           age,
-        });
-        details[r.name] = 0;
-        continue;
-      }
-      riderPremium = interest;
-      details[r.name] = Math.round(riderPremium);
-      total += riderPremium;
+        }
+      );
+      details[r.name] = 0;
       continue;
     }
 
@@ -667,7 +649,13 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
   }
 
   // Prepare batch fetch for regular and rider interests to avoid per-age DB queries.
-  const selectedRiders = (formData.riders || []).filter((r) => r.selected);
+  // Only include input-type riders for batch fetching and per-year premium
+  // calculation. Dropdown-type riders are intentionally excluded from the
+  // premium calculation (they are not counted in totals per user's request),
+  // but they remain available in the UI.
+  const selectedRiders = (formData.riders || []).filter(
+    (r) => r.selected && r.type !== "dropdown"
+  );
   const riderSegcodesSet = new Set<string>();
   for (const r of selectedRiders) {
     const seg = (r.dropdownValue || (r as any).id || r.name || "").toString();
@@ -711,6 +699,8 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
   // so iterate from 0..coveragePeriod inclusive (e.g., if coveragePeriod=35
   // and userAge=30, iterate ages 30..65).
   const totalSteps = formData.coveragePeriod + 1;
+  let cumulativeSum = 0;
+
   for (let i = 0; i < totalSteps; i++) {
     const currentAge = formData.userAge + i;
 
@@ -726,12 +716,14 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
       );
 
     const totalPremium = basePremium + ridersPremium;
+    cumulativeSum += totalPremium;
 
     yearlyBreakdown.push({
       year: currentAge,
       base: Math.round(basePremium),
       riders: Math.round(ridersPremium),
       total: Math.round(totalPremium),
+      cumulativeTotal: Math.round(cumulativeSum),
       riderDetails,
     });
 
