@@ -297,7 +297,7 @@ export async function initializeRatesCache(): Promise<{
           `[CACHE-INIT] Querying rider rates for gender: ${gender}, age range: ${minAge}-${maxAge}`
         );
         const results = await sqlClient`
-          SELECT age, gender, segcode, interest FROM rider
+          SELECT age, gender, segcode, CAST(interest AS NUMERIC) as interest FROM rider
           WHERE CAST(age AS INTEGER) >= ${minAge} AND CAST(age AS INTEGER) <= ${maxAge}
           AND lower(gender) = ${gender.toLowerCase()}
         `;
@@ -528,7 +528,7 @@ async function getRiderInterest(
 
     // First check: What data exists in the rider table?
     const allRiderRows = await sql`
-      SELECT DISTINCT segcode, age, gender, interest FROM rider
+      SELECT DISTINCT segcode, age, gender, CAST(interest AS NUMERIC) as interest FROM rider
       WHERE segcode = ${segcode}
       LIMIT 5
     `;
@@ -543,7 +543,7 @@ async function getRiderInterest(
     });
 
     const result = await sql`
-      SELECT interest FROM rider
+      SELECT CAST(interest AS NUMERIC) as interest FROM rider
       WHERE CAST(age AS INTEGER) = ${age}
       AND lower(gender) = ${gender.toLowerCase()}
       AND segcode = ${segcode}
@@ -624,7 +624,7 @@ async function fetchRiderInterestMap(
   try {
     console.debug("Batch querying rider rates", { minAge, maxAge, segcodes });
     const result = await sql`
-      SELECT age, segcode, interest FROM rider
+      SELECT age, segcode, CAST(interest AS NUMERIC) as interest FROM rider
       WHERE CAST(age AS INTEGER) >= ${minAge} AND CAST(age AS INTEGER) <= ${maxAge}
       AND lower(gender) = ${gender.toLowerCase()}
       AND segcode IN (${segcodes})

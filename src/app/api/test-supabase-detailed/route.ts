@@ -132,13 +132,13 @@ export async function GET() {
       });
     }
 
-    // Step 5: Try querying policy table
+    // Step 5: Try querying regular table
     results.steps.push({
-      step: "5. Querying 'policy' table...",
+      step: "5. Querying 'regular' table...",
     });
 
-    const policyUrl = `${supabaseUrl}/rest/v1/policy?select=*&limit=1`;
-    const policyResponse = await fetch(policyUrl, {
+    const regularUrl = `${supabaseUrl}/rest/v1/regular?select=*&limit=1`;
+    const regularResponse = await fetch(regularUrl, {
       method: "GET",
       headers: {
         apikey: supabaseAnonKey,
@@ -146,23 +146,23 @@ export async function GET() {
       },
     });
 
-    console.log("Policy response status:", policyResponse.status);
-    const policyBody = await policyResponse.text();
+    console.log("Regular response status:", regularResponse.status);
+    const regularBody = await regularResponse.text();
 
-    if (policyResponse.ok) {
-      const policyData = JSON.parse(policyBody);
+    if (regularResponse.ok) {
+      const regularData = JSON.parse(regularBody);
       results.steps.push({
-        step: "5. Query Policy Table",
+        step: "5. Query Regular Table",
         status: "OK",
-        rowCount: policyData.length,
-        sampleData: policyData.slice(0, 1),
+        rowCount: regularData.length,
+        sampleData: regularData.slice(0, 1),
       });
     } else {
       results.steps.push({
-        step: "5. Query Policy Table",
+        step: "5. Query Regular Table",
         status: "FAILED",
-        statusCode: policyResponse.status,
-        error: policyBody.substring(0, 300),
+        statusCode: regularResponse.status,
+        error: regularBody.substring(0, 300),
       });
     }
 
