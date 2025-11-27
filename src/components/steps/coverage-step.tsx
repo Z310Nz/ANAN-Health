@@ -191,6 +191,21 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
   const gender = getValues("gender");
   const riders = watch("riders") || [];
 
+  // Debug: log riders from form to see if id exists
+  useEffect(() => {
+    if (riders && riders.length > 0) {
+      console.debug("[coverage-step] Current riders from form watch:", {
+        total: riders.length,
+        withIdField: riders.map((r) => ({
+          name: r.name,
+          type: r.type,
+          id: (r as any).id,
+          hasId: (r as any).id !== undefined,
+        })),
+      });
+    }
+  }, [riders]);
+
   const [policies, setPolicies] = useState<Omit<Policy, "ages">[]>([]);
   const [policiesLoading, setPoliciesLoading] = useState(false);
 
@@ -211,6 +226,14 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
     if (gender) {
       getRidersForGender(gender)
         .then((data) => {
+          // Debug 1: Log server response
+          console.debug("[coverage-step] Server response from getRidersForGender:", {
+            totalRiders: data.length,
+            inputRidersFromServer: data
+              .filter((r) => r.type === "input")
+              .map((r) => ({ name: r.name, id: r.id })),
+          });
+
           // Get existing riders to preserve selections
           const existingRiders = getValues("riders") || [];
 
@@ -224,12 +247,31 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
               name: r.name,
               category: r.category,
               type: r.type,
+              id: r.id,
               // Preserve existing selections if rider exists
               selected: existing?.selected ?? false,
               amount: existing?.amount ?? undefined,
               dropdownValue: existing?.dropdownValue ?? undefined,
             };
           });
+          
+          // Debug 2: Log normalized riders
+          console.debug("[coverage-step] Normalized riders with id field:", {
+            totalRiders: normalized.length,
+            inputRidersWithId: normalized
+              .filter((r) => r.type === "input")
+              .map((r) => ({ name: r.name, id: r.id, hasId: r.id !== undefined })),
+          });
+          
+          // Debug 3: Log what will be set to form
+          console.debug("[coverage-step] About to setValue with riders:", {
+            ridersSample: normalized.slice(0, 3).map((r) => ({
+              name: r.name,
+              type: r.type,
+              id: (r as any).id,
+            })),
+          });
+          
           setValue("riders", normalized);
         })
         .catch((err) => console.error("Failed to fetch riders:", err));
@@ -344,6 +386,52 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                           key={item.index}
                           className="grid grid-cols-[auto_1fr] items-center gap-4 p-2 rounded-md hover:bg-gray-50"
                         >
+                          {/* Hidden fields to preserve id and other data */}
+                          <FormField
+                            control={control}
+                            name={`riders.${item.index}.id`}
+                            render={({ field }) => (
+                              <input
+                                {...field}
+                                type="hidden"
+                                value={field.value || ""}
+                              />
+                            )}
+                          />
+                          <FormField
+                            control={control}
+                            name={`riders.${item.index}.name`}
+                            render={({ field }) => (
+                              <input
+                                {...field}
+                                type="hidden"
+                                value={field.value || ""}
+                              />
+                            )}
+                          />
+                          <FormField
+                            control={control}
+                            name={`riders.${item.index}.category`}
+                            render={({ field }) => (
+                              <input
+                                {...field}
+                                type="hidden"
+                                value={field.value || ""}
+                              />
+                            )}
+                          />
+                          <FormField
+                            control={control}
+                            name={`riders.${item.index}.type`}
+                            render={({ field }) => (
+                              <input
+                                {...field}
+                                type="hidden"
+                                value={field.value || ""}
+                              />
+                            )}
+                          />
+
                           <FormField
                             control={control}
                             name={`riders.${item.index}.selected`}

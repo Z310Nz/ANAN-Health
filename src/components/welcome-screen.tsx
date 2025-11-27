@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/auth-context";
 import { useState } from "react";
 import { initializeRatesCache } from "@/app/actions";
+import { idbManager } from "@/lib/indexeddb";
 
 type WelcomeScreenProps = {
   onStart: () => void;
@@ -25,6 +26,15 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
       const result = await initializeRatesCache();
       if (result.success) {
         console.log("Cache initialized successfully:", result.cacheMetadata);
+
+        // Populate IndexedDB with the fetched records
+        if (result.idbRecords && result.idbRecords.length > 0) {
+          console.log(
+            `[IDB] Populating IndexedDB with ${result.idbRecords.length} records...`
+          );
+          await idbManager.addRates(result.idbRecords);
+          console.log("[IDB] IndexedDB populated successfully");
+        }
       } else {
         console.warn("Cache initialization failed:", result.error);
       }

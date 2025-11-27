@@ -41,6 +41,7 @@ const riderSchema = z
     name: z.string(),
     category: z.string(),
     type: z.enum(["dropdown", "input"]),
+    id: z.string().optional(),
     selected: z.boolean().optional(),
     amount: z.coerce.number().optional(),
     dropdownValue: z.string().optional(),
@@ -162,6 +163,18 @@ export default function PremiumCalculator({
   const handleBack = () => setCurrentStep((prev) => prev - 1);
 
   const handleCalculate = async (data: PremiumFormData) => {
+    // Debug: log form data before submission
+    console.log("[premium-calculator] Form data before submission:", {
+      riders: data.riders?.map((r) => ({
+        name: r.name,
+        type: r.type,
+        id: (r as any).id,
+        selected: r.selected,
+        amount: r.amount,
+        dropdownValue: r.dropdownValue,
+      })),
+    });
+
     setIsLoading(true);
     try {
       const result = await getPremiumSummary(data);

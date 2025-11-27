@@ -18,6 +18,11 @@ import {
   clearCache,
   getCacheMetadata,
 } from "@/lib/cache";
+import {
+  idbManager,
+  buildIndexedDBRecords,
+  type RateRecord,
+} from "@/lib/indexeddb";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -120,18 +125,20 @@ export async function deletePremiumSession(sessionId: string) {
  * Initialize cache with all rate data from Supabase
  * Called when user clicks "กดเพื่อเริ่มคำนวน" on welcome screen
  * Fetches both rider and regular rates for the full age range (18-100)
+ * Populates both server-side cache and returns data for browser IndexedDB
  */
 export async function initializeRatesCache(): Promise<{
   success: boolean;
   error?: string;
   cacheMetadata?: Record<string, any>;
+  idbRecords?: RateRecord[];
 }> {
   console.log("[CACHE-INIT] Starting cache initialization...");
   console.time("[CACHE-INIT] Total initialization time");
 
   try {
-    // Define age range to cache (typically 18-100 for insurance)
-    const minAge = 18;
+    // Define age range to cache (use 0-100 to match actual data in database)
+    const minAge = 0;
     const maxAge = 100;
     const genders = ["male", "female"];
 
@@ -164,16 +171,139 @@ export async function initializeRatesCache(): Promise<{
       };
     }
 
+    // Verify tables exist before querying
+    console.log("[CACHE-INIT] Verifying table existence...");
+    try {
+      const tables = await sqlClient`
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name IN ('rider', 'regular')
+      `;
+      const tableNames = tables.map((t: any) => t.table_name);
+      console.log(`[CACHE-INIT] Found tables: ${tableNames.join(", ")}`);
+
+      if (!tableNames.includes("rider") || !tableNames.includes("regular")) {
+        console.warn(
+          "[CACHE-INIT] Missing rider or regular table - will use local fallback"
+        );
+        return {
+          success: true,
+          cacheMetadata: {
+            mode: "local-fallback",
+            message: "Tables not found in database",
+          },
+        };
+      }
+    } catch (err) {
+      console.error("[CACHE-INIT] Error verifying tables:", err);
+    }
+
+    // Check column names and sample data from rider table
+    console.log("[CACHE-INIT] Inspecting rider table structure...");
+    try {
+      const columns = await sqlClient`
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_name = 'rider'
+        ORDER BY ordinal_position
+      `;
+      console.log(
+        "[CACHE-INIT] Rider columns:",
+        columns.map((c: any) => `${c.column_name}(${c.data_type})`).join(", ")
+      );
+
+      const sampleCount = await sqlClient`SELECT COUNT(*) as count FROM rider`;
+      console.log(
+        `[CACHE-INIT] Rider table total rows: ${sampleCount[0].count}`
+      );
+
+      const sampleRows = await sqlClient`SELECT * FROM rider LIMIT 3`;
+      console.log(
+        "[CACHE-INIT] Sample rider rows:",
+        JSON.stringify(sampleRows, null, 2)
+      );
+
+      const genderValues = await sqlClient`
+        SELECT DISTINCT gender FROM rider LIMIT 10
+      `;
+      console.log(
+        "[CACHE-INIT] Distinct gender values in rider:",
+        genderValues.map((r: any) => r.gender).join(", ")
+      );
+
+      const ageValues = await sqlClient`
+        SELECT DISTINCT age FROM rider ORDER BY age LIMIT 10
+      `;
+      console.log(
+        "[CACHE-INIT] Sample ages in rider:",
+        ageValues.map((r: any) => r.age).join(", ")
+      );
+    } catch (err) {
+      console.error("[CACHE-INIT] Error inspecting rider table:", err);
+    }
+
+    // Check column names and sample data from regular table
+    console.log("[CACHE-INIT] Inspecting regular table structure...");
+    try {
+      const columns = await sqlClient`
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_name = 'regular'
+        ORDER BY ordinal_position
+      `;
+      console.log(
+        "[CACHE-INIT] Regular columns:",
+        columns.map((c: any) => `${c.column_name}(${c.data_type})`).join(", ")
+      );
+
+      const sampleCount =
+        await sqlClient`SELECT COUNT(*) as count FROM regular`;
+      console.log(
+        `[CACHE-INIT] Regular table total rows: ${sampleCount[0].count}`
+      );
+
+      const sampleRows = await sqlClient`SELECT * FROM regular LIMIT 3`;
+      console.log(
+        "[CACHE-INIT] Sample regular rows:",
+        JSON.stringify(sampleRows, null, 2)
+      );
+
+      const genderValues = await sqlClient`
+        SELECT DISTINCT gender FROM regular LIMIT 10
+      `;
+      console.log(
+        "[CACHE-INIT] Distinct gender values in regular:",
+        genderValues.map((r: any) => r.gender).join(", ")
+      );
+
+      const ageValues = await sqlClient`
+        SELECT DISTINCT age FROM regular ORDER BY age LIMIT 10
+      `;
+      console.log(
+        "[CACHE-INIT] Sample ages in regular:",
+        ageValues.map((r: any) => r.age).join(", ")
+      );
+    } catch (err) {
+      console.error("[CACHE-INIT] Error inspecting regular table:", err);
+    }
+
     // Fetch all rider rates for all genders
     console.time("[CACHE-INIT] Fetch rider rates");
     let riderRows: any[] = [];
     for (const gender of genders) {
       try {
+        console.log(
+          `[CACHE-INIT] Querying rider rates for gender: ${gender}, age range: ${minAge}-${maxAge}`
+        );
         const results = await sqlClient`
           SELECT age, gender, segcode, interest FROM rider
-          WHERE age >= ${minAge} AND age <= ${maxAge}
+          WHERE CAST(age AS INTEGER) >= ${minAge} AND CAST(age AS INTEGER) <= ${maxAge}
           AND lower(gender) = ${gender.toLowerCase()}
         `;
+        console.log(
+          `[CACHE-INIT] Rider results for ${gender}: ${results.length} rows`
+        );
         riderRows.push(...results);
       } catch (err) {
         console.error(
@@ -190,11 +320,17 @@ export async function initializeRatesCache(): Promise<{
     let regularRows: any[] = [];
     for (const gender of genders) {
       try {
+        console.log(
+          `[CACHE-INIT] Querying regular rates for gender: ${gender}, age range: ${minAge}-${maxAge}`
+        );
         const results = await sqlClient`
           SELECT age, gender, segcode, interest FROM regular
-          WHERE age >= ${minAge} AND age <= ${maxAge}
+          WHERE CAST(age AS INTEGER) >= ${minAge} AND CAST(age AS INTEGER) <= ${maxAge}
           AND lower(gender) = ${gender.toLowerCase()}
         `;
+        console.log(
+          `[CACHE-INIT] Regular results for ${gender}: ${results.length} rows`
+        );
         regularRows.push(...results);
       } catch (err) {
         console.error(
@@ -217,13 +353,20 @@ export async function initializeRatesCache(): Promise<{
     // Initialize the in-memory cache
     initializeCache(cacheData);
 
+    // Build IndexedDB records
+    const idbRecords = buildIndexedDBRecords(riderRows, regularRows);
+
     const metadata = getCacheMetadata();
     console.timeEnd("[CACHE-INIT] Total initialization time");
     console.log("[CACHE-INIT] Cache initialized successfully:", metadata);
+    console.log(
+      `[CACHE-INIT] Prepared ${idbRecords.length} records for IndexedDB`
+    );
 
     return {
       success: true,
       cacheMetadata: metadata || {},
+      idbRecords,
     };
   } catch (error) {
     console.error("[CACHE-INIT] Failed to initialize cache:", error);
@@ -305,7 +448,7 @@ async function calculateBasePremium(
     });
     const result = await sql`
       SELECT interest FROM regular
-      WHERE age = ${age}
+      WHERE CAST(age AS INTEGER) = ${age}
       AND lower(gender) = ${gender.toLowerCase()}
       AND segcode = ${policyId}
       LIMIT 1
@@ -384,7 +527,7 @@ async function getRiderInterest(
     });
     const result = await sql`
       SELECT interest FROM rider
-      WHERE age = ${age}
+      WHERE CAST(age AS INTEGER) = ${age}
       AND lower(gender) = ${gender.toLowerCase()}
       AND segcode = ${segcode}
       LIMIT 1
@@ -459,7 +602,7 @@ async function fetchRiderInterestMap(
     console.debug("Batch querying rider rates", { minAge, maxAge, segcodes });
     const result = await sql`
       SELECT age, segcode, interest FROM rider
-      WHERE age >= ${minAge} AND age <= ${maxAge}
+      WHERE CAST(age AS INTEGER) >= ${minAge} AND CAST(age AS INTEGER) <= ${maxAge}
       AND lower(gender) = ${gender.toLowerCase()}
       AND segcode IN (${segcodes})
     `;
@@ -540,7 +683,7 @@ async function fetchRegularInterestMap(
     console.debug("Batch querying regular rates", { minAge, maxAge, segcodes });
     const result = await sql`
       SELECT age, segcode, interest FROM regular
-      WHERE age >= ${minAge} AND age <= ${maxAge}
+      WHERE CAST(age AS INTEGER) >= ${minAge} AND CAST(age AS INTEGER) <= ${maxAge}
       AND lower(gender) = ${gender.toLowerCase()}
       AND segcode IN (${segcodes})
     `;
@@ -703,7 +846,8 @@ async function calculateRidersPremiumDetailed(
   formData: PremiumFormData,
   age: number,
   sqlClient?: any,
-  rateMap?: Record<string, number | null>
+  rateMap?: Record<string, number | null>,
+  dropdownPremiums?: Record<string, number>
 ): Promise<{ total: number; details: Record<string, number> }> {
   const details: Record<string, number> = {};
   const selected = (formData.riders || []).filter((r) => r.selected);
@@ -733,62 +877,103 @@ async function calculateRidersPremiumDetailed(
     "Infinite Care (new standard) DD 300K",
   ]);
 
-  let total = 0;
+  // Process each rider and store in details object
   for (const r of selected) {
-    const segcode = (
-      r.dropdownValue ||
-      (r as any).id ||
-      r.name ||
-      ""
-    ).toString();
-    // determine divisor for input-type riders
-    let divisor = 1000;
-    if (per100000.has(r.name)) divisor = 100000;
-
     // compute per-rider premium
     let riderPremium = 0;
 
-    // Handle dropdown-type riders: use dropdownValue directly as premium (no divisor)
+    // Handle dropdown-type riders: use pre-calculated premium from minAge lookup
     if (r.type === "dropdown") {
-      const dropdownAmount =
-        typeof r.dropdownValue === "number"
-          ? r.dropdownValue
-          : Number(r.dropdownValue) || 0;
-      if (!dropdownAmount) {
+      const dropdownSegcode = r.dropdownValue?.toString() || "";
+      if (!dropdownSegcode) {
         console.debug(
-          "[rider-detail] dropdown amount missing or zero; skipping",
+          "[rider-detail] ❌ DROPDOWN rider - segcode missing; skipping",
           {
             name: r.name,
-            segcode,
-            rawAmount: r.dropdownValue,
+            type: "dropdown",
+            dropdownValue: r.dropdownValue,
           }
         );
         details[r.name] = 0;
         continue;
       }
-      riderPremium = dropdownAmount;
-      console.debug("[rider-detail] computed dropdown-type rider", {
-        name: r.name,
-        segcode,
-        age,
-        dropdownAmount,
-        premium: riderPremium,
-      });
-      details[r.name] = Math.round(riderPremium);
-      total += riderPremium;
+
+      // Use the pre-calculated premium from minAge (passed in dropdownPremiums)
+      if (dropdownPremiums && dropdownSegcode in dropdownPremiums) {
+        riderPremium = Number(dropdownPremiums[dropdownSegcode]) || 0;
+        console.log(
+          "[rider-detail] ✅ DROPDOWN - Direct Value (Reusing from minAge)",
+          {
+            riderName: r.name,
+            segcode: dropdownSegcode,
+            currentAge: age,
+            minAge: formData.userAge,
+            step1_LookupAtMinAge: {
+              SQL: `SELECT interest FROM rider WHERE CAST(age AS INTEGER)=${formData.userAge} AND gender='${formData.gender}' AND segcode='${dropdownSegcode}'`,
+              result: `interest = ${riderPremium}`,
+            },
+            step2_DirectPremium: {
+              formula: "Premium = Interest (no multiplier)",
+              calculation: `${riderPremium} (direct from interest value)`,
+            },
+            step3_ReuseForAllAges: {
+              explanation:
+                "Same premium reused for all ages in coverage period",
+              appliesTo: `Ages ${formData.userAge} to ${
+                formData.userAge + formData.coveragePeriod
+              }`,
+            },
+            finalPremium: Math.round(riderPremium),
+          }
+        );
+        details[r.name] = Math.round(riderPremium);
+        continue;
+      }
+
+      // Fallback if dropdownPremiums not provided (shouldn't happen in normal flow)
+      console.warn(
+        "[rider-detail] ❌ DROPDOWN rider - premium not pre-calculated; this shouldn't happen",
+        { name: r.name, segcode: dropdownSegcode }
+      );
+      details[r.name] = 0;
       continue;
     }
 
     // input-type -> use divisor based calculation
-    const key = `${age}|${segcode}`;
-    const interest =
+    // For input riders, MUST use the id field as segcode (required, not optional)
+    const inputSegcode = (r as any).id;
+    if (!inputSegcode) {
+      console.debug(
+        "[rider-detail] ❌ INPUT rider - id field missing (REQUIRED); skipping",
+        { name: r.name, type: "input", riderObject: r }
+      );
+      details[r.name] = 0;
+      continue;
+    }
+
+    console.debug("[rider-detail] INPUT rider lookup - Using ID as segcode", {
+      name: r.name,
+      id: inputSegcode,
+      segcode: inputSegcode,
+    });
+
+    // determine divisor for input-type riders
+    let divisor = 1000;
+    if (per100000.has(r.name)) divisor = 100000;
+
+    const key = `${age}|${inputSegcode}`;
+    const interestRaw =
       rateMap && key in rateMap
         ? rateMap[key]
-        : await getRiderInterest(age, formData.gender, segcode, sqlClient);
+        : await getRiderInterest(age, formData.gender, inputSegcode, sqlClient);
+
+    // Convert interest to number
+    const interest = interestRaw !== null ? Number(interestRaw) : null;
+
     if (interest === null) {
       console.debug(
-        "[rider-detail] no interest row for input-type rider; skipping",
-        { name: r.name, segcode, age }
+        "[rider-detail] ❌ INPUT rider - no interest row found; skipping",
+        { name: r.name, type: "input", segcode: inputSegcode, age }
       );
       details[r.name] = 0;
       continue;
@@ -797,21 +982,86 @@ async function calculateRidersPremiumDetailed(
     const sumInsured =
       typeof r.amount === "number" ? r.amount : Number(r.amount) || 0;
     if (!sumInsured) {
-      console.debug("[rider-detail] amount missing or zero; skipping", {
-        name: r.name,
-        segcode,
-        rawAmount: r.amount,
-      });
+      console.debug(
+        "[rider-detail] ❌ INPUT rider - amount missing or zero; skipping",
+        {
+          name: r.name,
+          type: "input",
+          segcode: inputSegcode,
+          rawAmount: r.amount,
+        }
+      );
       details[r.name] = 0;
       continue;
     }
 
     riderPremium = (sumInsured / divisor) * interest;
+
+    // Determine which divisor category this rider belongs to
+    let divisorCategory = "per-1000";
+    if (per100000.has(r.name)) divisorCategory = "per-100000";
+    else if (per1000.has(r.name)) divisorCategory = "per-1000";
+
+    console.log("[rider-detail] ✅ INPUT - Divisor Formula (Full Age Range)", {
+      riderName: r.name,
+      riderIdUsed: inputSegcode,
+      note: "Using rider.id as segcode for database lookup",
+      step0_RiderIdExtraction: {
+        riderId: inputSegcode,
+        segcodeForLookup: inputSegcode,
+      },
+      step1_LookupAtCurrentAge: {
+        currentAge: age,
+        SQL: `SELECT interest FROM rider WHERE CAST(age AS INTEGER)=${age} AND gender='${formData.gender}' AND segcode='${inputSegcode}'`,
+        result: `interest = ${interest}`,
+      },
+      step2_CalculatePremium: {
+        divisorCategory: divisorCategory,
+        divisor: divisor,
+        formula: `Premium = (SumInsured ÷ ${divisor}) × Interest`,
+        sumInsured: sumInsured,
+        interest: interest,
+      },
+      step3_Calculation: {
+        breakdown: `(${sumInsured} ÷ ${divisor}) × ${interest}`,
+        intermediate: `${sumInsured / divisor} × ${interest}`,
+        result: riderPremium.toFixed(2),
+      },
+      finalPremium: Math.round(riderPremium),
+    });
+
     details[r.name] = Math.round(riderPremium);
-    total += riderPremium;
   }
 
-  return { total: Math.round(total), details };
+  // Calculate total using sum() method
+  const totalRidersPremium = Object.values(details).reduce(
+    (sum, premium) => sum + premium,
+    0
+  );
+
+  console.log("[rider-detail] 📊 TOTAL Riders Premium for Age", {
+    currentAge: age,
+    step1_CollectAllRiderPremiums: {
+      breakdown: Object.entries(details).map(([name, premium]) => ({
+        riderName: name,
+        premium: premium,
+      })),
+      premiumValues: Object.values(details),
+    },
+    step2_SumAllPremiums: {
+      formula: `sum(${Object.values(details).join(" + ")})`,
+      calculation: Object.entries(details)
+        .map(([name, premium]) => `${name}: ${premium}`)
+        .join(" + "),
+      result: totalRidersPremium,
+    },
+    step3_FinalTotal: {
+      method: "Using Object.values().reduce()",
+      totalRidersPremium: totalRidersPremium,
+    },
+  });
+
+  return { total: totalRidersPremium, details };
 }
 
 async function generateBreakdown(formData: PremiumFormData): Promise<{
@@ -842,40 +1092,39 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
     }
   }
 
-  // Prepare batch fetch for regular and rider interests to avoid per-age DB queries.
-  // Include all selected riders (both input-type and dropdown-type) for premium calculation.
+  // Separate riders into dropdown and input types
   const selectedRiders = (formData.riders || []).filter((r) => r.selected);
-  const riderSegcodesSet = new Set<string>();
-  for (const r of selectedRiders) {
-    const seg = (r.dropdownValue || (r as any).id || r.name || "").toString();
-    if (seg) riderSegcodesSet.add(seg);
-  }
-  const riderSegcodes = Array.from(riderSegcodesSet);
+  const dropdownRiders = selectedRiders.filter((r) => r.type === "dropdown");
+  const inputRiders = selectedRiders.filter((r) => r.type === "input");
+
+  console.debug("[PERF] Rider breakdown", {
+    total: selectedRiders.length,
+    dropdown: dropdownRiders.length,
+    input: inputRiders.length,
+    selectedRidersDetail: selectedRiders.map((r) => ({
+      name: r.name,
+      type: r.type,
+      id: (r as any).id,
+      selected: r.selected,
+    })),
+  });
+
   const regularSegcodes = [mainPolicy.policy];
   const minAge = formData.userAge;
   const maxAge = formData.userAge + formData.coveragePeriod; // inclusive
 
-  console.time("[PERF] batch fetch rate maps");
-  const [riderRateMap, regularRateMap] = await Promise.all([
-    fetchRiderInterestMap(
-      formData.gender,
-      minAge,
-      maxAge,
-      riderSegcodes,
-      sqlClient
-    ),
-    fetchRegularInterestMap(
-      formData.gender,
-      minAge,
-      maxAge,
-      regularSegcodes,
-      sqlClient
-    ),
-  ]);
-  console.timeEnd("[PERF] batch fetch rate maps");
+  // Fetch regular rates once (used for all ages)
+  console.time("[PERF] batch fetch regular rate maps");
+  const regularRateMap = await fetchRegularInterestMap(
+    formData.gender,
+    minAge,
+    maxAge,
+    regularSegcodes,
+    sqlClient
+  );
+  console.timeEnd("[PERF] batch fetch regular rate maps");
 
-  // Calculate main policy premium once at the applicant's current age — use regularRateMap
-  // (if available) to avoid an extra DB query.
+  // Calculate main policy premium once at the applicant's current age
   console.time("[PERF] calculate base premium");
   const basePremiumStatic = await calculateBasePremium(
     formData.userAge,
@@ -886,6 +1135,88 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
     regularRateMap
   );
   console.timeEnd("[PERF] calculate base premium");
+
+  // Pre-fetch all dropdown rider rates (only at minAge)
+  console.time("[PERF] fetch dropdown rider rates");
+  const dropdownSegcodes = dropdownRiders
+    .map((r) => r.dropdownValue?.toString() || "")
+    .filter((seg) => seg);
+  const dropdownRateMap: Record<string, number | null> = {};
+  if (dropdownSegcodes.length > 0) {
+    // For dropdown riders, we only need rates at minAge
+    for (const seg of dropdownSegcodes) {
+      const key = `${minAge}|${seg}`;
+      const interest = await getRiderInterest(
+        minAge,
+        formData.gender,
+        seg,
+        sqlClient
+      );
+      dropdownRateMap[key] = interest === null ? null : interest;
+      console.debug("[PERF] Fetched dropdown rider rate", {
+        segcode: seg,
+        age: minAge,
+        interest,
+      });
+    }
+  }
+  console.timeEnd("[PERF] fetch dropdown rider rates");
+
+  // Pre-fetch all input rider rates (full age range)
+  console.time("[PERF] fetch input rider rates");
+  const inputSegcodes = inputRiders
+    .map((r) => (r as any).id)
+    .filter((seg) => seg);
+  console.debug("[PERF] Input rider segcodes to fetch (Using IDs ONLY)", {
+    segcodes: inputSegcodes,
+    note: "Each segcode is extracted from rider.id field (NOT rider.name)",
+    fromRiders: inputRiders.map((r) => ({
+      riderName: r.name,
+      riderIdUsed: (r as any).id,
+      willUseAsSegcode: (r as any).id,
+    })),
+  });
+  const inputRateMap = await fetchRiderInterestMap(
+    formData.gender,
+    minAge,
+    maxAge,
+    inputSegcodes,
+    sqlClient
+  );
+  console.timeEnd("[PERF] fetch input rider rates");
+
+  // Combine rate maps for lookup
+  const allRiderRateMap = { ...dropdownRateMap, ...inputRateMap };
+
+  // Pre-calculate dropdown rider premiums at minAge (only once)
+  console.time("[PERF] calculate dropdown rider premiums at minAge");
+  const dropdownPremiums: Record<string, number> = {};
+  for (const r of dropdownRiders) {
+    const dropdownSegcode = r.dropdownValue?.toString() || "";
+    if (!dropdownSegcode) continue;
+
+    const key = `${minAge}|${dropdownSegcode}`;
+    const interest =
+      dropdownRateMap && key in dropdownRateMap
+        ? dropdownRateMap[key]
+        : await getRiderInterest(
+            minAge,
+            formData.gender,
+            dropdownSegcode,
+            sqlClient
+          );
+
+    if (interest !== null && interest !== undefined) {
+      dropdownPremiums[dropdownSegcode] = interest;
+      console.debug("[PERF] Pre-calculated dropdown premium", {
+        name: r.name,
+        segcode: dropdownSegcode,
+        age: minAge,
+        premium: interest,
+      });
+    }
+  }
+  console.timeEnd("[PERF] calculate dropdown rider premiums at minAge");
 
   // coveragePeriod in the form is set as `coverageUntilAge - userAge` in the UI.
   // The user expects the breakdown to include the coverage end age itself,
@@ -906,7 +1237,8 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
         formData,
         currentAge,
         sqlClient,
-        riderRateMap
+        allRiderRateMap,
+        dropdownPremiums
       );
 
     const totalPremium = basePremium + ridersPremium;
@@ -1077,6 +1409,27 @@ export async function getPremiumSummary(
     "[premium] Calculating premium with form data:",
     JSON.stringify(formData)
   );
+
+  // Debug: Check if riders have id field
+  if (formData.riders && formData.riders.length > 0) {
+    console.log("[premium] Riders received at server:", {
+      totalRiders: formData.riders.length,
+      inputRidersDetail: formData.riders
+        .filter((r) => r.type === "input")
+        .map((r) => ({
+          name: r.name,
+          id: (r as any).id,
+          hasIdField: (r as any).id !== undefined,
+        })),
+      dropdownRidersDetail: formData.riders
+        .filter((r) => r.type === "dropdown")
+        .map((r) => ({
+          name: r.name,
+          dropdownValue: r.dropdownValue,
+          hasDropdownValue: r.dropdownValue !== undefined,
+        })),
+    });
+  }
 
   if (!connectionString) {
     console.warn(
