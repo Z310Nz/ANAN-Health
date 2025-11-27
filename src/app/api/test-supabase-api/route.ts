@@ -20,9 +20,12 @@ export async function GET() {
       );
     }
 
-    // Test query using REST API
-    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/now`, {
-      method: "POST",
+    // Test query using REST API - query rider table instead of RPC
+    const url = `${supabaseUrl}/rest/v1/rider?select=*&limit=1`;
+    console.log("Fetching from:", url);
+
+    const response = await fetch(url, {
+      method: "GET",
       headers: {
         apikey: supabaseAnonKey,
         Authorization: `Bearer ${supabaseAnonKey}`,
@@ -32,8 +35,14 @@ export async function GET() {
       throw err;
     });
 
+    console.log("Response status:", response.status);
+
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorBody = await response.text();
+      console.error("Response body:", errorBody);
+      throw new Error(
+        `HTTP ${response.status}: ${response.statusText} - ${errorBody}`
+      );
     }
 
     const data = await response.json();
@@ -41,7 +50,8 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       message: "Supabase REST API connection successful",
-      data,
+      dataCount: data.length,
+      sampleData: data.slice(0, 1),
       environment: process.env.NODE_ENV,
     });
   } catch (error: any) {
@@ -52,7 +62,7 @@ export async function GET() {
         success: false,
         error: error.message || "Connection failed",
         errorCode: error.code,
-        hint: "Ensure Supabase API keys are set in Vercel environment variables",
+        hint: "Ensure Supabase API keys are set and table 'rider' exists",
       },
       { status: 500 }
     );
