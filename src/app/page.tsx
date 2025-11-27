@@ -1,9 +1,8 @@
-'use client';
+"use client";
 
-import MainApp from '@/components/main-app';
-import RegisterPage from '@/app/register/page';
-import { useAuth } from '@/contexts/auth-context';
-import { Loader2 } from 'lucide-react';
+import MainApp from "@/components/main-app";
+import { useAuth } from "@/contexts/auth-context";
+import { Loader2 } from "lucide-react";
 
 export default function Home() {
   const { liffUser, loading, liffError, isRegistered } = useAuth();
@@ -12,27 +11,42 @@ export default function Home() {
     return (
       <main className="flex h-screen w-full flex-col items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Initializing & Checking User...</p>
+        <p className="mt-4 text-muted-foreground">
+          Initializing & Checking User...
+        </p>
       </main>
     );
   }
 
   if (liffError) {
-      return (
+    return (
       <main className="flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
-        <h1 className="text-xl font-bold text-destructive mb-4">LIFF Initialization Error</h1>
-        <p className="text-muted-foreground mb-2">Could not initialize the LIFF application.</p>
-        <p className="text-xs text-muted-foreground bg-gray-100 p-2 rounded-md">{liffError}</p>
-        <p className="mt-4 text-sm text-muted-foreground">Please make sure you are opening this app through LINE and that the LIFF ID is correct.</p>
+        <h1 className="text-xl font-bold text-destructive mb-4">
+          LIFF Initialization Error
+        </h1>
+        <p className="text-muted-foreground mb-2">
+          Could not initialize the LIFF application.
+        </p>
+        <p className="text-xs text-muted-foreground bg-gray-100 p-2 rounded-md">
+          {liffError}
+        </p>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Please make sure you are opening this app through LINE and that the
+          LIFF ID is correct.
+        </p>
       </main>
     );
   }
-  
+
   if (!liffUser) {
-     return (
+    return (
       <main className="flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
-        <h1 className="text-xl font-bold text-destructive mb-4">Could not get user profile</h1>
-        <p className="text-muted-foreground">Please try again or ensure you are logged into LINE.</p>
+        <h1 className="text-xl font-bold text-destructive mb-4">
+          Could not get user profile
+        </h1>
+        <p className="text-muted-foreground">
+          Please try again or ensure you are logged into LINE.
+        </p>
       </main>
     );
   }
@@ -44,10 +58,12 @@ export default function Home() {
       </main>
     );
   } else {
+    // TODO: Temporarily disabled registration page
+    // Return MainApp regardless of registration status for now
     return (
       <main>
-        <RegisterPage />
+        <MainApp />
       </main>
-    )
+    );
   }
 }
