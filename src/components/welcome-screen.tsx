@@ -1,30 +1,57 @@
-'use client';
+"use client";
 
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAuth } from '@/contexts/auth-context';
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/auth-context";
+import { useState } from "react";
+import { initializeRatesCache } from "@/app/actions";
 
 type WelcomeScreenProps = {
-    onStart: () => void;
+  onStart: () => void;
 };
 
 export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
   const { liffUser } = useAuth();
-  
+  const [isInitializing, setIsInitializing] = useState(false);
+
   const getInitials = (name: string | undefined) => {
-    if (!name) return 'U';
+    if (!name) return "U";
     return name.charAt(0).toUpperCase();
-  }
+  };
+
+  const handleStart = async () => {
+    setIsInitializing(true);
+    try {
+      const result = await initializeRatesCache();
+      if (result.success) {
+        console.log("Cache initialized successfully:", result.cacheMetadata);
+      } else {
+        console.warn("Cache initialization failed:", result.error);
+      }
+    } catch (error) {
+      console.error("Error initializing cache:", error);
+    } finally {
+      setIsInitializing(false);
+      onStart();
+    }
+  };
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
-        <p className="text-muted-foreground mb-4">anan-health.co.th</p>
-        <Avatar className="h-48 w-48 mb-8">
-            <AvatarImage src={liffUser?.avatarUrl} alt={liffUser?.displayName} />
-            <AvatarFallback>{getInitials(liffUser?.displayName)}</AvatarFallback>
-        </Avatar>
+      <a
+        href="https://nongfaa.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-teal-600 hover:text-teal-700 hover:underline mb-4 font-medium transition-colors"
+      >
+        nongfaa.com
+      </a>
+      <Avatar className="h-48 w-48 mb-8">
+        <AvatarImage src={liffUser?.avatarUrl} alt={liffUser?.displayName} />
+        <AvatarFallback>{getInitials(liffUser?.displayName)}</AvatarFallback>
+      </Avatar>
       <h1 className="text-2xl font-bold text-foreground mb-2">
-        ยินดีต้อนรับ “{liffUser?.displayName || 'คุณ'}”
+        ยินดีต้อนรับ “{liffUser?.displayName || "คุณ"}”
       </h1>
       <h2 className="text-2xl font-bold text-foreground mb-4">
         เข้าสู่ระบบคำนวณเบี้ยประกันภัย
@@ -34,10 +61,11 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
       </p>
       <Button
         size="lg"
-        onClick={onStart}
-        className="bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-full px-12 py-6 text-lg"
+        onClick={handleStart}
+        disabled={isInitializing}
+        className="bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-full px-12 py-6 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        กดเพื่อเริ่มคำนวน
+        {isInitializing ? "กำลังโหลดข้อมูล..." : "กดเพื่อเริ่มคำนวน"}
       </Button>
     </div>
   );

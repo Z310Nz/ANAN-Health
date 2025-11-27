@@ -8,6 +8,16 @@ import type {
 } from "@/lib/types";
 import { getSqlClient, testDbConnection } from "@/lib/db";
 import getLocalInterest from "@/lib/interestRates";
+import {
+  initializeCache,
+  buildRateratesCache,
+  type CacheData,
+  getCachedRiderRate,
+  getCachedRegularRate,
+  isCacheAvailable,
+  clearCache,
+  getCacheMetadata,
+} from "@/lib/cache";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -104,6 +114,127 @@ export async function deletePremiumSession(sessionId: string) {
   return { id: sessionId };
 }
 
+// --- Cache Initialization ---
+
+/**
+ * Initialize cache with all rate data from Supabase
+ * Called when user clicks "กดเพื่อเริ่มคำนวน" on welcome screen
+ * Fetches both rider and regular rates for the full age range (18-100)
+ */
+export async function initializeRatesCache(): Promise<{
+  success: boolean;
+  error?: string;
+  cacheMetadata?: Record<string, any>;
+}> {
+  console.log("[CACHE-INIT] Starting cache initialization...");
+  console.time("[CACHE-INIT] Total initialization time");
+
+  try {
+    // Define age range to cache (typically 18-100 for insurance)
+    const minAge = 18;
+    const maxAge = 100;
+    const genders = ["male", "female"];
+
+    if (!connectionString) {
+      console.warn(
+        "[CACHE-INIT] DATABASE_URL not set, cache will use local fallback"
+      );
+      clearCache();
+      return {
+        success: true,
+        cacheMetadata: {
+          mode: "local-fallback",
+          message: "No database available",
+        },
+      };
+    }
+
+    let sqlClient: any;
+    try {
+      sqlClient = getSqlClient();
+    } catch (err) {
+      console.warn("[CACHE-INIT] Could not create SQL client:", err);
+      clearCache();
+      return {
+        success: true,
+        cacheMetadata: {
+          mode: "local-fallback",
+          message: "SQL client unavailable",
+        },
+      };
+    }
+
+    // Fetch all rider rates for all genders
+    console.time("[CACHE-INIT] Fetch rider rates");
+    let riderRows: any[] = [];
+    for (const gender of genders) {
+      try {
+        const results = await sqlClient`
+          SELECT age, gender, segcode, interest FROM rider
+          WHERE age >= ${minAge} AND age <= ${maxAge}
+          AND lower(gender) = ${gender.toLowerCase()}
+        `;
+        riderRows.push(...results);
+      } catch (err) {
+        console.error(
+          `[CACHE-INIT] Error fetching rider rates for ${gender}:`,
+          err
+        );
+      }
+    }
+    console.timeEnd("[CACHE-INIT] Fetch rider rates");
+    console.log(`[CACHE-INIT] Fetched ${riderRows.length} rider rate rows`);
+
+    // Fetch all regular (main policy) rates for all genders
+    console.time("[CACHE-INIT] Fetch regular rates");
+    let regularRows: any[] = [];
+    for (const gender of genders) {
+      try {
+        const results = await sqlClient`
+          SELECT age, gender, segcode, interest FROM regular
+          WHERE age >= ${minAge} AND age <= ${maxAge}
+          AND lower(gender) = ${gender.toLowerCase()}
+        `;
+        regularRows.push(...results);
+      } catch (err) {
+        console.error(
+          `[CACHE-INIT] Error fetching regular rates for ${gender}:`,
+          err
+        );
+      }
+    }
+    console.timeEnd("[CACHE-INIT] Fetch regular rates");
+    console.log(`[CACHE-INIT] Fetched ${regularRows.length} regular rate rows`);
+
+    // Build cache from fetched data
+    const cacheData = buildRateratesCache(
+      riderRows,
+      regularRows,
+      minAge,
+      maxAge
+    );
+
+    // Initialize the in-memory cache
+    initializeCache(cacheData);
+
+    const metadata = getCacheMetadata();
+    console.timeEnd("[CACHE-INIT] Total initialization time");
+    console.log("[CACHE-INIT] Cache initialized successfully:", metadata);
+
+    return {
+      success: true,
+      cacheMetadata: metadata || {},
+    };
+  } catch (error) {
+    console.error("[CACHE-INIT] Failed to initialize cache:", error);
+    clearCache();
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
 // --- Premium Calculation Functions ---
 
 async function calculateBasePremium(
@@ -114,7 +245,27 @@ async function calculateBasePremium(
   sqlClient?: any,
   rateMap?: Record<string, number | null>
 ): Promise<number> {
-  // If a pre-fetched rate map is provided, prefer it to avoid extra DB queries
+  // 1. Check in-memory cache first
+  if (isCacheAvailable()) {
+    const cachedRate = getCachedRegularRate(age, gender, policyId);
+    if (cachedRate !== undefined) {
+      const interest = cachedRate === null ? null : cachedRate;
+      if (interest === null) {
+        const fallback = getLocalInterest(age, gender, policyId);
+        if (fallback === null) return 0;
+        console.debug("[base-cache] Using local fallback after cache miss", {
+          age,
+          policyId,
+          fallback,
+        });
+        return (policyAmount / 1000) * fallback;
+      }
+      console.debug("[base-cache] Cache hit", { age, policyId, interest });
+      return (policyAmount / 1000) * interest;
+    }
+  }
+
+  // 2. If a pre-fetched rate map is provided, use it to avoid extra DB queries
   if (rateMap) {
     const key = `${age}|${policyId}`;
     if (key in rateMap) {
@@ -127,7 +278,8 @@ async function calculateBasePremium(
       return (policyAmount / 1000) * interestVal;
     }
   }
-  // If DATABASE_URL is not set or DB host cannot be resolved, fall back to local rates
+
+  // 3. If DATABASE_URL is not set or DB host cannot be resolved, fall back to local rates
   if (!connectionString) {
     console.warn(
       "DATABASE_URL is not set — using local fallback interest rates for development."
@@ -147,6 +299,10 @@ async function calculateBasePremium(
     return (policyAmount / 1000) * interest;
   }
   try {
+    console.debug("[base-db] Querying database (cache miss)", {
+      age,
+      policyId,
+    });
     const result = await sql`
       SELECT interest FROM regular
       WHERE age = ${age}
@@ -188,8 +344,27 @@ async function getRiderInterest(
   segcode: string,
   sqlClient?: any
 ): Promise<number | null> {
+  // 1. Check in-memory cache first
+  if (isCacheAvailable()) {
+    const cachedRate = getCachedRiderRate(age, gender, segcode);
+    if (cachedRate !== undefined) {
+      if (cachedRate === null) {
+        const fallback = getLocalInterest(age, gender, segcode);
+        console.debug("[rider-cache] Cache hit (null), using fallback", {
+          age,
+          segcode,
+          fallback,
+        });
+        return fallback === null ? null : fallback;
+      }
+      console.debug("[rider-cache] Cache hit", { age, segcode, cachedRate });
+      return cachedRate;
+    }
+  }
+
+  // 2. Fallback to local if no database
   if (!connectionString) {
-    // fallback to local interest lookup
+    console.debug("[rider-cache] No database, using local interest");
     const interest = getLocalInterest(age, gender, segcode);
     return interest === null ? null : interest;
   }
@@ -198,12 +373,15 @@ async function getRiderInterest(
   try {
     sql = sqlClient ?? getSqlClient();
   } catch (e) {
+    console.debug("[rider-cache] SQL client error, using local interest");
     const interest = getLocalInterest(age, gender, segcode);
     return interest === null ? null : interest;
   }
   try {
-    // Log query intent for diagnostics (will appear in server logs).
-    console.debug("Querying rider rate", { age, gender, segcode });
+    console.debug("[rider-db] Querying database (cache miss)", {
+      age,
+      segcode,
+    });
     const result = await sql`
       SELECT interest FROM rider
       WHERE age = ${age}
@@ -570,19 +748,34 @@ async function calculateRidersPremiumDetailed(
     // compute per-rider premium
     let riderPremium = 0;
 
-    // Dropdown-type riders are excluded from rider premium calculation per user
-    // request. We still include them in `details` with value 0 so the UI can
-    // show the rider but not include it in totals.
+    // Handle dropdown-type riders: use dropdownValue directly as premium (no divisor)
     if (r.type === "dropdown") {
-      console.debug(
-        "[rider-detail] skipping dropdown-type rider in per-year details",
-        {
-          name: r.name,
-          segcode,
-          age,
-        }
-      );
-      details[r.name] = 0;
+      const dropdownAmount =
+        typeof r.dropdownValue === "number"
+          ? r.dropdownValue
+          : Number(r.dropdownValue) || 0;
+      if (!dropdownAmount) {
+        console.debug(
+          "[rider-detail] dropdown amount missing or zero; skipping",
+          {
+            name: r.name,
+            segcode,
+            rawAmount: r.dropdownValue,
+          }
+        );
+        details[r.name] = 0;
+        continue;
+      }
+      riderPremium = dropdownAmount;
+      console.debug("[rider-detail] computed dropdown-type rider", {
+        name: r.name,
+        segcode,
+        age,
+        dropdownAmount,
+        premium: riderPremium,
+      });
+      details[r.name] = Math.round(riderPremium);
+      total += riderPremium;
       continue;
     }
 
@@ -625,6 +818,7 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
   yearlyBreakdown: YearlyPremium[];
   chartData: PremiumCalculation["chartData"];
 }> {
+  console.time("[PERF] generateBreakdown total");
   const yearlyBreakdown: YearlyPremium[] = [];
   const chartData: PremiumCalculation["chartData"] = [];
 
@@ -649,13 +843,8 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
   }
 
   // Prepare batch fetch for regular and rider interests to avoid per-age DB queries.
-  // Only include input-type riders for batch fetching and per-year premium
-  // calculation. Dropdown-type riders are intentionally excluded from the
-  // premium calculation (they are not counted in totals per user's request),
-  // but they remain available in the UI.
-  const selectedRiders = (formData.riders || []).filter(
-    (r) => r.selected && r.type !== "dropdown"
-  );
+  // Include all selected riders (both input-type and dropdown-type) for premium calculation.
+  const selectedRiders = (formData.riders || []).filter((r) => r.selected);
   const riderSegcodesSet = new Set<string>();
   for (const r of selectedRiders) {
     const seg = (r.dropdownValue || (r as any).id || r.name || "").toString();
@@ -666,6 +855,7 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
   const minAge = formData.userAge;
   const maxAge = formData.userAge + formData.coveragePeriod; // inclusive
 
+  console.time("[PERF] batch fetch rate maps");
   const [riderRateMap, regularRateMap] = await Promise.all([
     fetchRiderInterestMap(
       formData.gender,
@@ -682,9 +872,11 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
       sqlClient
     ),
   ]);
+  console.timeEnd("[PERF] batch fetch rate maps");
 
   // Calculate main policy premium once at the applicant's current age — use regularRateMap
   // (if available) to avoid an extra DB query.
+  console.time("[PERF] calculate base premium");
   const basePremiumStatic = await calculateBasePremium(
     formData.userAge,
     formData.gender,
@@ -693,6 +885,7 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
     sqlClient,
     regularRateMap
   );
+  console.timeEnd("[PERF] calculate base premium");
 
   // coveragePeriod in the form is set as `coverageUntilAge - userAge` in the UI.
   // The user expects the breakdown to include the coverage end age itself,
@@ -701,6 +894,7 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
   const totalSteps = formData.coveragePeriod + 1;
   let cumulativeSum = 0;
 
+  console.time("[PERF] yearly loop");
   for (let i = 0; i < totalSteps; i++) {
     const currentAge = formData.userAge + i;
 
@@ -739,7 +933,9 @@ async function generateBreakdown(formData: PremiumFormData): Promise<{
       });
     }
   }
+  console.timeEnd("[PERF] yearly loop");
 
+  console.timeEnd("[PERF] generateBreakdown total");
   return { yearlyBreakdown, chartData };
 }
 
