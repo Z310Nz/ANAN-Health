@@ -13,6 +13,7 @@ import {
   queryRegularViaSupabase,
   queryRiderBatchViaSupabase,
 } from "@/lib/supabase-queries";
+import { createClient } from "@supabase/supabase-js";
 import {
   initializeCache,
   buildRateratesCache,
@@ -709,7 +710,45 @@ async function fetchRiderInterestMap(
     return map;
   } catch (err) {
     console.error("Error batch fetching rider interests:", err);
-    // On error, populate with local fallbacks
+
+    // Fallback 1: Try Supabase Client SDK
+    try {
+      console.debug(
+        "[rider-supabase] Batch query failed, trying Supabase fallback..."
+      );
+      const supabaseMap = await queryRiderBatchViaSupabase(
+        gender,
+        minAge,
+        maxAge,
+        segcodes
+      );
+
+      if (Object.keys(supabaseMap).length > 0) {
+        console.debug(
+          "[rider-supabase] Supabase batch query succeeded with",
+          Object.keys(supabaseMap).length,
+          "rows"
+        );
+        // Fill in missing values with local fallback
+        for (let age = minAge; age <= maxAge; age++) {
+          for (const seg of segcodes) {
+            const key = `${age}|${seg}`;
+            if (!(key in supabaseMap) || supabaseMap[key] === null) {
+              const fallback = getLocalInterest(age, gender, seg);
+              supabaseMap[key] = fallback === null ? null : fallback;
+            }
+          }
+        }
+        return supabaseMap;
+      }
+    } catch (supabaseErr) {
+      console.error(
+        "[rider-supabase] Supabase batch fallback also failed:",
+        supabaseErr
+      );
+    }
+
+    // Fallback 2: Use local rates
     for (let age = minAge; age <= maxAge; age++) {
       for (const seg of segcodes) {
         const interest = getLocalInterest(age, gender, seg);
@@ -790,6 +829,61 @@ async function fetchRegularInterestMap(
     return map;
   } catch (err) {
     console.error("Error batch fetching regular interests:", err);
+
+    // Fallback 1: Try Supabase Client SDK
+    try {
+      console.debug(
+        "[regular-supabase] Batch query failed, trying Supabase fallback..."
+      );
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error("Missing Supabase credentials");
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const { data, error } = await supabase
+        .from("regular")
+        .select("age, segcode, interest")
+        .eq("gender", gender.toLowerCase())
+        .in("segcode", segcodes);
+
+      if (!error && data && data.length > 0) {
+        console.debug(
+          "[regular-supabase] Supabase batch query succeeded with",
+          data.length,
+          "rows"
+        );
+        // Parse results into map
+        data.forEach((row: any) => {
+          const ageNum = parseInt(row.age, 10);
+          if (ageNum >= minAge && ageNum <= maxAge) {
+            const key = `${ageNum}|${row.segcode}`;
+            map[key] = row.interest ? Number(row.interest) : null;
+          }
+        });
+
+        // Fill remaining with local fallback
+        for (let age = minAge; age <= maxAge; age++) {
+          for (const seg of segcodes) {
+            const key = `${age}|${seg}`;
+            if (!(key in map) || map[key] === null) {
+              const fallback = getLocalInterest(age, gender, seg);
+              map[key] = fallback === null ? null : fallback;
+            }
+          }
+        }
+        return map;
+      }
+    } catch (supabaseErr) {
+      console.error(
+        "[regular-supabase] Supabase fallback also failed:",
+        supabaseErr
+      );
+    }
+
+    // Fallback 2: Use local rates
     for (let age = minAge; age <= maxAge; age++) {
       for (const seg of segcodes) {
         const interest = getLocalInterest(age, gender, seg);

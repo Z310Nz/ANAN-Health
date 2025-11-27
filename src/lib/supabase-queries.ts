@@ -67,12 +67,11 @@ export async function queryRiderBatchViaSupabase(
   const map: Record<string, number | null> = {};
 
   try {
+    // Fetch all data and filter in JavaScript since PostgREST doesn't support numeric CAST in filters
     const { data, error } = await supabase
       .from("rider")
       .select("age, segcode, interest")
       .eq("gender", gender.toLowerCase())
-      .gte("age", minAge.toString())
-      .lte("age", maxAge.toString())
       .in("segcode", segcodes);
 
     if (error) {
@@ -80,9 +79,14 @@ export async function queryRiderBatchViaSupabase(
       return map;
     }
 
+    // Filter by age range and convert to map
     (data || []).forEach((row: any) => {
-      const key = `${row.age}|${row.segcode}`;
-      map[key] = row.interest ? Number(row.interest) : null;
+      const ageNum = parseInt(row.age, 10);
+      // Only include rows within the age range
+      if (ageNum >= minAge && ageNum <= maxAge) {
+        const key = `${ageNum}|${row.segcode}`;
+        map[key] = row.interest ? Number(row.interest) : null;
+      }
     });
   } catch (err) {
     console.error("[Supabase] Batch query exception:", err);
