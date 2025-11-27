@@ -9,6 +9,11 @@ import type {
 import { getSqlClient, testDbConnection } from "@/lib/db";
 import getLocalInterest from "@/lib/interestRates";
 import {
+  queryRiderViaSupabase,
+  queryRegularViaSupabase,
+  queryRiderBatchViaSupabase,
+} from "@/lib/supabase-queries";
+import {
   initializeCache,
   buildRateratesCache,
   type CacheData,
@@ -297,8 +302,8 @@ export async function initializeRatesCache(): Promise<{
           `[CACHE-INIT] Querying rider rates for gender: ${gender}, age range: ${minAge}-${maxAge}`
         );
         const results = await sqlClient`
-          SELECT age, gender, segcode, CAST(interest AS NUMERIC) as interest FROM rider
-          WHERE CAST(age AS INTEGER) >= ${minAge} AND CAST(age AS INTEGER) <= ${maxAge}
+          SELECT age, gender, segcode, CAST(REPLACE(interest, ',', '') AS NUMERIC) as interest FROM rider
+          WHERE CAST(TRIM(age) AS INTEGER) >= ${minAge} AND CAST(TRIM(age) AS INTEGER) <= ${maxAge}
           AND lower(gender) = ${gender.toLowerCase()}
         `;
         console.log(
@@ -325,7 +330,7 @@ export async function initializeRatesCache(): Promise<{
         );
         const results = await sqlClient`
           SELECT age, gender, segcode, interest FROM regular
-          WHERE CAST(age AS INTEGER) >= ${minAge} AND CAST(age AS INTEGER) <= ${maxAge}
+          WHERE CAST(TRIM(age) AS INTEGER) >= ${minAge} AND CAST(TRIM(age) AS INTEGER) <= ${maxAge}
           AND lower(gender) = ${gender.toLowerCase()}
         `;
         console.log(
@@ -448,7 +453,7 @@ async function calculateBasePremium(
     });
     const result = await sql`
       SELECT interest FROM regular
-      WHERE CAST(age AS INTEGER) = ${age}
+      WHERE CAST(TRIM(age) AS INTEGER) = ${age}
       AND lower(gender) = ${gender.toLowerCase()}
       AND segcode = ${policyId}
       LIMIT 1
@@ -528,7 +533,7 @@ async function getRiderInterest(
 
     // First check: What data exists in the rider table?
     const allRiderRows = await sql`
-      SELECT DISTINCT segcode, age, gender, CAST(interest AS NUMERIC) as interest FROM rider
+      SELECT DISTINCT segcode, age, gender, CAST(REPLACE(interest, ',', '') AS NUMERIC) as interest FROM rider
       WHERE segcode = ${segcode}
       LIMIT 5
     `;
@@ -543,8 +548,8 @@ async function getRiderInterest(
     });
 
     const result = await sql`
-      SELECT CAST(interest AS NUMERIC) as interest FROM rider
-      WHERE CAST(age AS INTEGER) = ${age}
+      SELECT CAST(REPLACE(interest, ',', '') AS NUMERIC) as interest FROM rider
+      WHERE CAST(TRIM(age) AS INTEGER) = ${age}
       AND lower(gender) = ${gender.toLowerCase()}
       AND segcode = ${segcode}
       LIMIT 1
@@ -560,7 +565,32 @@ async function getRiderInterest(
 
     if (result.length === 0) {
       console.debug("No rider row found for", { age, gender, segcode });
-      // fallback to local rates
+      // Fallback 1: Try Supabase client
+      console.debug("[rider-supabase] Trying Supabase client fallback...");
+      try {
+        const supabaseResults = await queryRiderViaSupabase(
+          age,
+          gender,
+          segcode
+        );
+        if (supabaseResults.length > 0) {
+          const interest = supabaseResults[0].interest;
+          console.debug("[rider-supabase] Found via Supabase:", {
+            age,
+            gender,
+            segcode,
+            interest,
+          });
+          return interest;
+        }
+      } catch (supabaseErr) {
+        console.debug(
+          "[rider-supabase] Supabase fallback failed:",
+          supabaseErr
+        );
+      }
+
+      // Fallback 2: Use local rates
       const interest = getLocalInterest(age, gender, segcode);
       console.debug("[rider-db] Using local fallback interest", {
         age,
@@ -579,7 +609,30 @@ async function getRiderInterest(
     });
     return result[0].interest;
   } catch (error) {
-    console.error("Error fetching rider interest:", error);
+    console.error("Error fetching rider interest from database:", error);
+
+    // Fallback: Try Supabase client
+    try {
+      console.debug("[rider-supabase] DB error, trying Supabase fallback...");
+      const supabaseResults = await queryRiderViaSupabase(age, gender, segcode);
+      if (supabaseResults.length > 0) {
+        const interest = supabaseResults[0].interest;
+        console.debug("[rider-supabase] Found via Supabase fallback:", {
+          age,
+          gender,
+          segcode,
+          interest,
+        });
+        return interest;
+      }
+    } catch (supabaseErr) {
+      console.debug(
+        "[rider-supabase] Supabase fallback also failed:",
+        supabaseErr
+      );
+    }
+
+    // Final fallback: Local rates
     const interest = getLocalInterest(age, gender, segcode);
     return interest === null ? null : interest;
   }
@@ -624,8 +677,8 @@ async function fetchRiderInterestMap(
   try {
     console.debug("Batch querying rider rates", { minAge, maxAge, segcodes });
     const result = await sql`
-      SELECT age, segcode, CAST(interest AS NUMERIC) as interest FROM rider
-      WHERE CAST(age AS INTEGER) >= ${minAge} AND CAST(age AS INTEGER) <= ${maxAge}
+      SELECT CAST(TRIM(age) AS INTEGER) as age, segcode, CAST(REPLACE(interest, ',', '') AS NUMERIC) as interest FROM rider
+      WHERE CAST(TRIM(age) AS INTEGER) >= ${minAge} AND CAST(TRIM(age) AS INTEGER) <= ${maxAge}
       AND lower(gender) = ${gender.toLowerCase()}
       AND segcode IN (${segcodes})
     `;
@@ -1016,6 +1069,17 @@ async function calculateRidersPremiumDetailed(
       const parsed = Number(cleanedValue);
       interest = isNaN(parsed) ? null : parsed;
     }
+
+    console.debug("[rider-detail] INPUT rider interest lookup result:", {
+      name: r.name,
+      type: "input",
+      age,
+      segcode: inputSegcode,
+      key,
+      cacheHit: rateMap && key in rateMap,
+      interestRaw,
+      interestParsed: interest,
+    });
     if (interest === null) {
       console.debug(
         "[rider-detail] ❌ INPUT rider - no interest row found; skipping",
