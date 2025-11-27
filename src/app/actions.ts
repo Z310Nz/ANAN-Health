@@ -525,6 +525,23 @@ async function getRiderInterest(
       age,
       segcode,
     });
+
+    // First check: What data exists in the rider table?
+    const allRiderRows = await sql`
+      SELECT DISTINCT segcode, age, gender, interest FROM rider
+      WHERE segcode = ${segcode}
+      LIMIT 5
+    `;
+    console.debug("[rider-db] All rider rows for this segcode:", {
+      segcode,
+      rowsFound: allRiderRows.length,
+      rows: allRiderRows.map((r: any) => ({
+        age: r.age,
+        gender: r.gender,
+        interest: r.interest,
+      })),
+    });
+
     const result = await sql`
       SELECT interest FROM rider
       WHERE CAST(age AS INTEGER) = ${age}
@@ -533,18 +550,24 @@ async function getRiderInterest(
       LIMIT 1
     `;
 
+    console.debug("[rider-db] Query result for exact match:", {
+      age,
+      gender,
+      segcode,
+      resultFound: result.length > 0,
+      result: result,
+    });
+
     if (result.length === 0) {
       console.debug("No rider row found for", { age, gender, segcode });
       // fallback to local rates
       const interest = getLocalInterest(age, gender, segcode);
-      if (interest !== null) {
-        console.debug("Using local fallback interest for rider", {
-          age,
-          gender,
-          segcode,
-          interest,
-        });
-      }
+      console.debug("[rider-db] Using local fallback interest", {
+        age,
+        gender,
+        segcode,
+        interest,
+      });
       return interest === null ? null : interest;
     }
 
@@ -962,14 +985,37 @@ async function calculateRidersPremiumDetailed(
     if (per100000.has(r.name)) divisor = 100000;
 
     const key = `${age}|${inputSegcode}`;
+
+    console.debug("[rider-detail] Looking up interest rate:", {
+      age,
+      inputSegcode,
+      key,
+      rateMapExists: !!rateMap,
+      keyInRateMap: rateMap ? key in rateMap : false,
+      rateMapValue: rateMap ? rateMap[key] : "no rateMap",
+      allKeysInRateMap: rateMap
+        ? Object.keys(rateMap)
+            .filter((k) => k.includes(inputSegcode))
+            .slice(0, 3)
+        : [],
+    });
+
     const interestRaw =
       rateMap && key in rateMap
         ? rateMap[key]
         : await getRiderInterest(age, formData.gender, inputSegcode, sqlClient);
 
-    // Convert interest to number
-    const interest = interestRaw !== null ? Number(interestRaw) : null;
-
+    // Convert interest to number - handle strings with commas
+    let interest: number | null = null;
+    if (interestRaw !== null && interestRaw !== undefined) {
+      // If it's a string with commas (e.g., '2,900'), remove them first
+      const cleanedValue =
+        typeof interestRaw === "string"
+          ? (interestRaw as string).replace(/,/g, "")
+          : interestRaw;
+      const parsed = Number(cleanedValue);
+      interest = isNaN(parsed) ? null : parsed;
+    }
     if (interest === null) {
       console.debug(
         "[rider-detail] ❌ INPUT rider - no interest row found; skipping",

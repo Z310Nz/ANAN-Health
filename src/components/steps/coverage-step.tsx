@@ -227,12 +227,15 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
       getRidersForGender(gender)
         .then((data) => {
           // Debug 1: Log server response
-          console.debug("[coverage-step] Server response from getRidersForGender:", {
-            totalRiders: data.length,
-            inputRidersFromServer: data
-              .filter((r) => r.type === "input")
-              .map((r) => ({ name: r.name, id: r.id })),
-          });
+          console.debug(
+            "[coverage-step] Server response from getRidersForGender:",
+            {
+              totalRiders: data.length,
+              inputRidersFromServer: data
+                .filter((r) => r.type === "input")
+                .map((r) => ({ name: r.name, id: r.id })),
+            }
+          );
 
           // Get existing riders to preserve selections
           const existingRiders = getValues("riders") || [];
@@ -254,15 +257,19 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
               dropdownValue: existing?.dropdownValue ?? undefined,
             };
           });
-          
+
           // Debug 2: Log normalized riders
           console.debug("[coverage-step] Normalized riders with id field:", {
             totalRiders: normalized.length,
             inputRidersWithId: normalized
               .filter((r) => r.type === "input")
-              .map((r) => ({ name: r.name, id: r.id, hasId: r.id !== undefined })),
+              .map((r) => ({
+                name: r.name,
+                id: r.id,
+                hasId: r.id !== undefined,
+              })),
           });
-          
+
           // Debug 3: Log what will be set to form
           console.debug("[coverage-step] About to setValue with riders:", {
             ridersSample: normalized.slice(0, 3).map((r) => ({
@@ -271,7 +278,7 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
               id: (r as any).id,
             })),
           });
-          
+
           setValue("riders", normalized);
         })
         .catch((err) => console.error("Failed to fetch riders:", err));
@@ -386,52 +393,6 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                           key={item.index}
                           className="grid grid-cols-[auto_1fr] items-center gap-4 p-2 rounded-md hover:bg-gray-50"
                         >
-                          {/* Hidden fields to preserve id and other data */}
-                          <FormField
-                            control={control}
-                            name={`riders.${item.index}.id`}
-                            render={({ field }) => (
-                              <input
-                                {...field}
-                                type="hidden"
-                                value={field.value || ""}
-                              />
-                            )}
-                          />
-                          <FormField
-                            control={control}
-                            name={`riders.${item.index}.name`}
-                            render={({ field }) => (
-                              <input
-                                {...field}
-                                type="hidden"
-                                value={field.value || ""}
-                              />
-                            )}
-                          />
-                          <FormField
-                            control={control}
-                            name={`riders.${item.index}.category`}
-                            render={({ field }) => (
-                              <input
-                                {...field}
-                                type="hidden"
-                                value={field.value || ""}
-                              />
-                            )}
-                          />
-                          <FormField
-                            control={control}
-                            name={`riders.${item.index}.type`}
-                            render={({ field }) => (
-                              <input
-                                {...field}
-                                type="hidden"
-                                value={field.value || ""}
-                              />
-                            )}
-                          />
-
                           <FormField
                             control={control}
                             name={`riders.${item.index}.selected`}
@@ -440,8 +401,41 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                                 <FormControl>
                                   <Checkbox
                                     checked={field.value}
-                                    onCheckedChange={field.onChange}
+                                    onCheckedChange={(checked) => {
+                                      field.onChange(checked);
+                                      // ฝัง id ไว้เมื่อเลือก
+                                      if (checked && item.id) {
+                                        setTimeout(() => {
+                                          const currentData = getValues(
+                                            `riders.${item.index}`
+                                          );
+                                          setValue(
+                                            `riders.${item.index}`,
+                                            {
+                                              ...currentData,
+                                              id: item.id,
+                                              name: item.name,
+                                              category: item.category,
+                                              type: item.type,
+                                            },
+                                            { shouldValidate: true }
+                                          );
+                                          console.debug(
+                                            `[coverage-step] Checkbox selected for ${item.name}:`,
+                                            {
+                                              id: item.id,
+                                              name: item.name,
+                                              riderData: getValues(
+                                                `riders.${item.index}`
+                                              ),
+                                            }
+                                          );
+                                        }, 0);
+                                      }
+                                    }}
                                     id={`rider-check-${item.index}`}
+                                    data-rider-id={item.id}
+                                    data-rider-name={item.name}
                                   />
                                 </FormControl>
                               </FormItem>
