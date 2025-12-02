@@ -348,6 +348,77 @@ export async function initializeRatesCache(): Promise<{
     console.timeEnd("[CACHE-INIT] Fetch regular rates");
     console.log(`[CACHE-INIT] Fetched ${regularRows.length} regular rate rows`);
 
+    // If we got insufficient data from direct DB, try Supabase fallback
+    if (riderRows.length === 0 || regularRows.length === 0) {
+      console.warn(
+        "[CACHE-INIT] Insufficient data from direct PostgreSQL, attempting Supabase fallback..."
+      );
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+        if (supabaseUrl && supabaseAnonKey) {
+          const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+          // Fetch rider data from Supabase
+          if (riderRows.length === 0) {
+            console.log("[CACHE-INIT] Fetching rider data from Supabase...");
+            const { data: riderData, error: riderError } = await supabase
+              .from("rider")
+              .select("age, gender, segcode, interest");
+
+            if (!riderError && riderData) {
+              console.log(
+                `[CACHE-INIT] Got ${riderData.length} rider rows from Supabase`
+              );
+              riderRows.push(
+                ...riderData.map((row: any) => ({
+                  age: row.age,
+                  gender: row.gender,
+                  segcode: row.segcode,
+                  interest: Number(row.interest) || 0,
+                }))
+              );
+            } else {
+              console.error(
+                "[CACHE-INIT] Supabase rider fetch failed:",
+                riderError
+              );
+            }
+          }
+
+          // Fetch regular data from Supabase
+          if (regularRows.length === 0) {
+            console.log("[CACHE-INIT] Fetching regular data from Supabase...");
+            const { data: regularData, error: regularError } = await supabase
+              .from("regular")
+              .select("age, gender, segcode, interest");
+
+            if (!regularError && regularData) {
+              console.log(
+                `[CACHE-INIT] Got ${regularData.length} regular rows from Supabase`
+              );
+              regularRows.push(
+                ...regularData.map((row: any) => ({
+                  age: row.age,
+                  gender: row.gender,
+                  segcode: row.segcode,
+                  interest: Number(row.interest) || 0,
+                }))
+              );
+            } else {
+              console.error(
+                "[CACHE-INIT] Supabase regular fetch failed:",
+                regularError
+              );
+            }
+          }
+        }
+      } catch (supabaseErr) {
+        console.error("[CACHE-INIT] Supabase fallback failed:", supabaseErr);
+      }
+    }
+
     // Build cache from fetched data
     const cacheData = buildRateratesCache(
       riderRows,
@@ -368,10 +439,17 @@ export async function initializeRatesCache(): Promise<{
     console.log(
       `[CACHE-INIT] Prepared ${idbRecords.length} records for IndexedDB`
     );
+    console.log(
+      `[CACHE-INIT] Total data: ${riderRows.length} rider rows + ${regularRows.length} regular rows`
+    );
 
     return {
       success: true,
-      cacheMetadata: metadata || {},
+      cacheMetadata: {
+        ...(metadata || {}),
+        riderRowsCount: riderRows.length,
+        regularRowsCount: regularRows.length,
+      },
       idbRecords,
     };
   } catch (error) {
