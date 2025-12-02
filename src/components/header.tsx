@@ -1,14 +1,37 @@
 "use client";
 
+import { useAuth } from "@/contexts/auth-context";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 export default function AppHeader() {
+  const { liffUser } = useAuth();
+
+  const getInitials = (name: string | undefined) => {
+    if (!name) return "U";
+    return name.charAt(0).toUpperCase();
+  };
+
   return (
-    <header className="sticky top-0 z-30 flex h-10 items-center gap-4 border-b border-teal-200 bg-white px-4 shadow-sm sm:px-6">
-      <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b border-teal-200 bg-white px-4 shadow-sm sm:px-6">
+      <div className="flex items-center gap-2 flex-1">
         <AnanHealthLogo />
-        <span className="text-xl font-bold font-headline text-teal-600">
+        <span className="text-lg font-bold font-headline text-teal-600 truncate">
           ANAN Health
         </span>
       </div>
+      {liffUser && (
+        <div className="flex items-center gap-2">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={liffUser.avatarUrl} alt={liffUser.displayName} />
+            <AvatarFallback className="text-xs">
+              {getInitials(liffUser.displayName)}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-xs font-medium text-gray-600 truncate max-w-[100px]">
+            {liffUser.displayName}
+          </span>
+        </div>
+      )}
     </header>
   );
 }

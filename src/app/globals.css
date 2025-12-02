@@ -1,8 +1,7 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
 @layer base {
   :root {
     --background: 208 100% 97%;
@@ -28,7 +27,7 @@
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
   }
- 
+
   .dark {
     --background: 220 20% 10%;
     --foreground: 0 0% 98%;
@@ -53,7 +52,7 @@
     --chart-2: 160 60% 45%;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
@@ -61,5 +60,21 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* LIFF Safe Area Inset */
+  .safe-area-inset {
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  /* LIFF Viewport Optimization */
+  @supports (padding: max(0px)) {
+    body {
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
   }
 }

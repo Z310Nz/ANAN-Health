@@ -47,36 +47,56 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
   };
 
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
-      <a
-        href="https://nongfaa.com"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-teal-600 hover:text-teal-700 hover:underline mb-4 font-medium transition-colors"
-      >
-        nongfaa.com
-      </a>
-      <Avatar className="h-48 w-48 mb-8">
+    <div className="flex h-screen w-full flex-col items-center justify-center bg-gradient-to-br from-teal-50 to-cyan-50 p-4 text-center">
+      {/* Logo/Branding */}
+      <div className="mb-6">
+        <a
+          href="https://nongfaa.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-teal-600 hover:text-teal-700 hover:underline font-medium transition-colors text-sm"
+        >
+          nongfaa.com
+        </a>
+      </div>
+
+      {/* User Avatar */}
+      <Avatar className="h-40 w-40 mb-8 shadow-lg ring-4 ring-teal-200">
         <AvatarImage src={liffUser?.avatarUrl} alt={liffUser?.displayName} />
-        <AvatarFallback>{getInitials(liffUser?.displayName)}</AvatarFallback>
+        <AvatarFallback className="text-3xl font-bold bg-teal-500 text-white">
+          {getInitials(liffUser?.displayName)}
+        </AvatarFallback>
       </Avatar>
-      <h1 className="text-2xl font-bold text-foreground mb-2">
-        ยินดีต้อนรับ “{liffUser?.displayName || "คุณ"}”
+
+      {/* Welcome Message */}
+      <h1 className="text-3xl font-bold text-foreground mb-2">
+        ยินดีต้อนรับ "{liffUser?.displayName || "คุณ"}"
       </h1>
-      <h2 className="text-2xl font-bold text-foreground mb-4">
+      <h2 className="text-2xl font-bold text-teal-600 mb-4">
         เข้าสู่ระบบคำนวณเบี้ยประกันภัย
       </h2>
-      <p className="max-w-md text-sm text-red-500 mb-8">
-        **ใช้เพื่อการวางแผนเท่านั้น มิใช่ข้อเสนอประกันชีวิตและสุขภาพ**
+
+      {/* Disclaimer */}
+      <p className="max-w-md text-sm text-red-600 font-medium mb-8 leading-relaxed">
+        ⚠️ ใช้เพื่อการวางแผนเท่านั้น<br />
+        มิใช่ข้อเสนอประกันชีวิตและสุขภาพ
       </p>
+
+      {/* Start Button */}
       <Button
         size="lg"
         onClick={handleStart}
         disabled={isInitializing}
-        className="bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-full px-12 py-6 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+        className="bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-full px-12 py-6 text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg w-full max-w-xs"
       >
-        {isInitializing ? "กำลังโหลดข้อมูล..." : "กดเพื่อเริ่มคำนวน"}
+        {isInitializing ? "🔄 กำลังโหลดข้อมูล..." : "🚀 กดเพื่อเริ่มคำนวน"}
       </Button>
+
+      {/* Info Text */}
+      <p className="mt-8 text-xs text-gray-600 max-w-sm">
+        ระบบจะโหลดข้อมูลอัตราเบี้ยและอื่น ๆ<br />
+        ใช้เวลาสักครู่กรุณารอสักครู่
+      </p>
     </div>
   );
 }

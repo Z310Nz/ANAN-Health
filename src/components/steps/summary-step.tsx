@@ -34,7 +34,15 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { RefreshCw, Info } from "lucide-react";
+import { RefreshCw, Info, Share2, Send, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import { useState } from "react";
+import {
+  shareToTimeline,
+  sendToChat,
+  closeLiff,
+  formatPremiumResultForShare,
+} from "@/lib/liff-utils";
 
 type SummaryStepProps = {
   calculation: PremiumCalculation;
@@ -63,12 +71,67 @@ export default function SummaryStep({
   calculation,
   onStartOver,
 }: SummaryStepProps) {
+  const { liffUser } = useAuth();
+  const [isSharing, setIsSharing] = useState(false);
+
   // Calculate total premium to be paid over the entire coverage period
   const totalCoverageCost =
     calculation.yearlyBreakdown && calculation.yearlyBreakdown.length > 0
       ? calculation.yearlyBreakdown[calculation.yearlyBreakdown.length - 1]
           .cumulativeTotal ?? 0
       : 0;
+
+  const handleShareToTimeline = async () => {
+    setIsSharing(true);
+    try {
+      const message = formatPremiumResultForShare(
+        liffUser?.displayName || "ผู้ใช้",
+        calculation.riderInfo?.age || "N/A",
+        calculation.riderInfo?.gender || "N/A",
+        calculation.coverageType || "N/A",
+        calculation.monthlyBasePremium || 0,
+        calculation.coveragePeriod || "N/A"
+      );
+
+      const success = await shareToTimeline(message);
+      if (success) {
+        console.log("✅ Shared to Timeline successfully");
+      }
+    } catch (error) {
+      console.error("Failed to share:", error);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleSendToChat = async () => {
+    setIsSharing(true);
+    try {
+      const message = formatPremiumResultForShare(
+        liffUser?.displayName || "ผู้ใช้",
+        calculation.riderInfo?.age || "N/A",
+        calculation.riderInfo?.gender || "N/A",
+        calculation.coverageType || "N/A",
+        calculation.monthlyBasePremium || 0,
+        calculation.coveragePeriod || "N/A"
+      );
+
+      const success = await sendToChat(message);
+      if (success) {
+        console.log("✅ Sent to Chat successfully");
+        // Optionally close LIFF after sharing
+        // closeLiff();
+      }
+    } catch (error) {
+      console.error("Failed to send:", error);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleCloseLiff = () => {
+    closeLiff();
+  };
 
   return (
     <div className="space-y-8">
@@ -198,10 +261,37 @@ export default function SummaryStep({
         </CardContent>
       </Card>
 
-      <div className="flex flex-col sm:flex-row justify-end gap-4">
-        <Button onClick={onStartOver} variant="outline">
+      <div className="flex flex-col gap-3">
+        <Button
+          onClick={handleShareToTimeline}
+          disabled={isSharing}
+          className="w-full bg-green-500 hover:bg-green-600 text-white font-bold"
+        >
+          <Share2 className="mr-2 h-4 w-4" />
+          {isSharing ? "กำลังแชร์..." : "แชร์ไปยัง Timeline"}
+        </Button>
+        <Button
+          onClick={handleSendToChat}
+          disabled={isSharing}
+          className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold"
+        >
+          <Send className="mr-2 h-4 w-4" />
+          {isSharing ? "กำลังส่ง..." : "ส่งไปยัง Chat"}
+        </Button>
+      </div>
+
+      <div className="flex flex-col sm:flex-row justify-between gap-4">
+        <Button onClick={onStartOver} variant="outline" className="flex-1">
           <RefreshCw className="mr-2 h-4 w-4" />
-          Start Over
+          คำนวณใหม่
+        </Button>
+        <Button
+          onClick={handleCloseLiff}
+          variant="outline"
+          className="flex-1 text-red-600 hover:text-red-700"
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          ปิด
         </Button>
       </div>
     </div>
