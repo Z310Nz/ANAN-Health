@@ -69,8 +69,13 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
   useEffect(() => {
     const currentAge = getValues("userAge");
     const period = getValues("coveragePeriod");
-    if (currentAge > 0 && period > 0) {
-      setCoverageUntilAgeDisplay((currentAge + period).toString());
+
+    // If current age is 0 or period is 0, clear display
+    if (currentAge === 0 || period === 0) {
+      setCoverageUntilAgeDisplay("");
+    } else if (currentAge > 0 && period > 0 && period >= currentAge) {
+      // Display the coverage until age (which is stored as period in coveragePeriod)
+      setCoverageUntilAgeDisplay(period.toString());
     } else {
       setCoverageUntilAgeDisplay("");
     }
@@ -79,33 +84,41 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
   const handleCoverageUntilAgeChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const inputVal = e.target.value;
-    setCoverageUntilAgeDisplay(inputVal);
+    // Only allow numeric characters
+    const inputValue = e.target.value.replace(/[^\d]/g, "");
+    const coverageUntilAge = inputValue === "" ? 0 : Number(inputValue);
 
-    const coverageUntilAge = Number(inputVal);
+    setCoverageUntilAgeDisplay(inputValue);
+
     const currentAge = Number(getValues("userAge"));
 
+    // Set coveragePeriod to the coverage until age (which is the absolute age, not period)
     if (
       !isNaN(coverageUntilAge) &&
-      currentAge > 0 &&
-      coverageUntilAge > currentAge
+      currentAge >= 0 &&
+      coverageUntilAge >= currentAge
     ) {
-      const newCoveragePeriod = coverageUntilAge - currentAge;
-      setValue("coveragePeriod", newCoveragePeriod, { shouldValidate: true });
+      setValue("coveragePeriod", coverageUntilAge, { shouldValidate: true });
     } else {
       setValue("coveragePeriod", 0, { shouldValidate: true });
     }
   };
 
   const handleAgeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newAge = Number(e.target.value);
+    // Only allow numeric characters
+    const inputValue = e.target.value.replace(/[^\d]/g, "");
+    const newAge = inputValue === "" ? 0 : Number(inputValue);
+
+    // Set the value (numeric only)
     setValue("userAge", newAge, { shouldValidate: true });
 
+    // Update coverage period if valid
     const coverageUntilAge = Number(coverageUntilAgeDisplay);
-    if (!isNaN(coverageUntilAge) && newAge > 0 && coverageUntilAge > newAge) {
-      const newCoveragePeriod = coverageUntilAge - newAge;
+    if (!isNaN(coverageUntilAge) && newAge >= 0 && coverageUntilAge >= newAge) {
+      const newCoveragePeriod = coverageUntilAge;
       setValue("coveragePeriod", newCoveragePeriod, { shouldValidate: true });
-    } else if (newAge <= 0 || coverageUntilAge <= newAge) {
+    } else if (newAge > coverageUntilAge) {
+      setCoverageUntilAgeDisplay("");
       setValue("coveragePeriod", 0, { shouldValidate: true });
     }
   };
@@ -149,10 +162,10 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
             name="userAge"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>อายุปัจจุบัน (ปี)</FormLabel>
+                <FormLabel>อายุปัจจุบัน (ปี) *</FormLabel>
                 <FormControl>
                   <Input
-                    type="number"
+                    inputMode="numeric"
                     placeholder="กรุณาใส่อายุ"
                     {...field}
                     value={field.value || ""}
@@ -168,10 +181,10 @@ export default function UserInfoStep({ onNext, onClear }: UserInfoStepProps) {
             name="coveragePeriod"
             render={() => (
               <FormItem>
-                <FormLabel>ความคุ้มครองจนถึงอายุ (ปี)</FormLabel>
+                <FormLabel>ความคุ้มครองจนถึงอายุ (ปี) *</FormLabel>
                 <FormControl>
                   <Input
-                    type="number"
+                    inputMode="numeric"
                     placeholder="กรุณาใส่อายุ"
                     onChange={handleCoverageUntilAgeChange}
                     value={coverageUntilAgeDisplay}

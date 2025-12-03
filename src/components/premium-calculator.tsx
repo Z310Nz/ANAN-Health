@@ -93,13 +93,10 @@ const riderSchema = z
 const FormSchema = z.object({
   userAge: z.coerce
     .number()
-    .min(18, "ต้องมีอายุอย่างน้อย 18 ปี")
+    .min(0, "ต้องมีอายุไม่น้อยกว่า 0 ปี")
     .max(100, "อายุต้องไม่เกิน 100 ปี"),
   gender: z.enum(["male", "female"], { required_error: "กรุณาเลือกเพศ" }),
-  coveragePeriod: z.coerce
-    .number()
-    .min(1, "Must be at least 1 year")
-    .max(50, "Cannot exceed 50 years"),
+  coveragePeriod: z.coerce.number(),
   policies: z.array(policySchema).optional(),
   riders: z.array(riderSchema).optional(),
 });
@@ -165,10 +162,35 @@ export default function PremiumCalculator({
   const handleNext = async () => {
     const fieldsToValidate: (keyof PremiumFormData)[] =
       currentStep === 0
-        ? ["userAge", "gender", "coveragePeriod"]
+        ? ["userAge", "gender"]
         : ["policies", "riders"];
 
     const isValid = await methods.trigger(fieldsToValidate);
+
+    // Additional validation for step 0 (user info) - check coveragePeriod only on submit
+    if (currentStep === 0 && isValid) {
+      const userAge = methods.getValues("userAge");
+      const coveragePeriod = methods.getValues("coveragePeriod");
+
+      // Check if coverage period > 100
+      if (coveragePeriod > 100) {
+        methods.setError("coveragePeriod", {
+          type: "manual",
+          message: "ความคุ้มครองจนถึงอายุต้องไม่เกิน 100 ปี",
+        });
+        return;
+      }
+
+      // Check if coverage period < user age
+      if (coveragePeriod < userAge) {
+        methods.setError("coveragePeriod", {
+          type: "manual",
+          message: "ความคุ้มครองจนถึงอายุต้องไม่น้อยกว่าอายุปัจจุบัน",
+        });
+        return;
+      }
+    }
+
     if (isValid) setCurrentStep((prev) => prev + 1);
   };
 
