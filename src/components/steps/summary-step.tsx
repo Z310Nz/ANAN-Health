@@ -34,7 +34,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { RefreshCw, Info, Share2, Send, LogOut } from "lucide-react";
+import { RefreshCw, Info, Share2, Send, LogOut, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useState } from "react";
 import {
@@ -47,6 +47,7 @@ import {
 type SummaryStepProps = {
   calculation: PremiumCalculation;
   onStartOver: () => void;
+  onBack?: () => void;
 };
 
 const chartConfig = {
@@ -70,6 +71,7 @@ const currencyFormatter = new Intl.NumberFormat("th-TH", {
 export default function SummaryStep({
   calculation,
   onStartOver,
+  onBack,
 }: SummaryStepProps) {
   const { liffUser } = useAuth();
   const [isSharing, setIsSharing] = useState(false);
@@ -281,6 +283,12 @@ export default function SummaryStep({
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between gap-4">
+        {onBack && (
+          <Button onClick={onBack} variant="outline" className="flex-1">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            แก้ไขข้อมูล
+          </Button>
+        )}
         <Button onClick={onStartOver} variant="outline" className="flex-1">
           <RefreshCw className="mr-2 h-4 w-4" />
           คำนวณใหม่

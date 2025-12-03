@@ -162,6 +162,11 @@ export default function PremiumCalculator({
 
   const handleBack = () => setCurrentStep((prev) => prev - 1);
 
+  const handleBackFromSummary = () => {
+    setCalculation(null);
+    setCurrentStep(2);
+  };
+
   const handleCalculate = async (data: PremiumFormData) => {
     // Debug: log form data before submission
     console.log("[premium-calculator] Form data before submission:", {
@@ -218,6 +223,7 @@ export default function PremiumCalculator({
           <SummaryStep
             calculation={calculation}
             onStartOver={handleStartOver}
+            onBack={handleBackFromSummary}
           />
         ) : null;
       default:

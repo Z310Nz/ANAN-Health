@@ -354,6 +354,7 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                     <FormControl>
                       <Input
                         type="text"
+                        inputMode="numeric"
                         placeholder="วงเงิน (100,000 - 100,000,000)"
                         {...field}
                         value={
@@ -362,8 +363,12 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                             : (Number(field.value) || 0).toLocaleString()
                         }
                         onChange={(e) => {
-                          const raw = e.target.value.replace(/,/g, "");
+                          // รับเฉพาะตัวเลข
+                          const raw = e.target.value.replace(/[^\d]/g, "");
                           field.onChange(raw === "" ? undefined : Number(raw));
+                        }}
+                        onBlur={() => {
+                          field.onBlur();
                         }}
                       />
                     </FormControl>
@@ -469,6 +474,7 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                                       <FormControl>
                                         <Input
                                           type="text"
+                                          inputMode="numeric"
                                           placeholder={`ระบุวงเงิน ${hint}`}
                                           {...field}
                                           value={
@@ -480,8 +486,9 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                                                 ).toLocaleString()
                                           }
                                           onChange={(e) => {
+                                            // รับเฉพาะตัวเลข
                                             const raw = e.target.value.replace(
-                                              /,/g,
+                                              /[^\d]/g,
                                               ""
                                             );
                                             field.onChange(
@@ -489,6 +496,9 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                                                 ? undefined
                                                 : Number(raw)
                                             );
+                                          }}
+                                          onBlur={() => {
+                                            field.onBlur();
                                           }}
                                           disabled={
                                             !riders[item.index]?.selected
