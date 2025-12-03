@@ -75,7 +75,18 @@ const riderSchema = z
     },
     {
       message: "กรุณากรอกข้อมูลอนุสัญญาที่เลือก",
-      path: ["amount"],
+      path: ["amount"], // This will show under amount field for input-type
+    }
+  )
+  .refine(
+    (data) => {
+      // Separate validation for dropdown riders
+      if (!data.selected || data.type !== "dropdown") return true;
+      return data.dropdownValue !== undefined && data.dropdownValue !== "";
+    },
+    {
+      message: "กรุณาเลือกแผนที่ต้องการ",
+      path: ["dropdownValue"], // This will show under dropdownValue field for dropdown-type
     }
   );
 
@@ -109,6 +120,7 @@ export default function PremiumCalculator({
 
   const methods = useForm<PremiumFormData>({
     resolver: zodResolver(FormSchema),
+    mode: "onChange", // Validate on change for realtime error updates
     defaultValues: {
       userAge: 30,
       gender: undefined,

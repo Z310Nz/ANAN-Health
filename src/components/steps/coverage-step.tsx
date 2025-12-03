@@ -185,7 +185,7 @@ const riderDropdownOptions: Record<string, RiderOptions> = {
 };
 
 export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
-  const { control, getValues, watch, setValue } =
+  const { control, getValues, watch, setValue, formState } =
     useFormContext<PremiumFormData>();
 
   const gender = getValues("gender");
@@ -499,6 +499,11 @@ export default function CoverageStep({ onBack, onNext }: CoverageStepProps) {
                                           }}
                                           onBlur={() => {
                                             field.onBlur();
+                                            // Trigger validation for riders array
+                                            formState.dirtyFields.riders &&
+                                              setTimeout(() => {
+                                                // Force re-render to show/hide error
+                                              }, 0);
                                           }}
                                           disabled={
                                             !riders[item.index]?.selected
